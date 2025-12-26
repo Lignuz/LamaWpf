@@ -26,9 +26,10 @@ public partial class MainWindow : Window
             // 2. »õ ºä·Î ±³Ã¼
             MainContent.Content = tag switch
             {
-                "Home" => new WelcomeView(),
-                "Lama" => new LamaView(),
-                _ => new WelcomeView()
+                "Home" => new Views.WelcomeView(),
+                "Lama" => new Views.LamaView(),
+                "Depth" => new Views.DepthView(),
+                _ => new Views.WelcomeView()
             };
         }
     }

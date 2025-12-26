@@ -1,22 +1,25 @@
 ﻿# WpfAiRunner
 
 A high-performance WPF application for running local AI models via **ONNX Runtime**.
-This project demonstrates a production-ready implementation of **LaMa (Large Mask Inpainting)** with hybrid CPU/GPU execution support.
+This project demonstrates a production-ready implementation of **LaMa (Inpainting)** and **Depth Anything V2 (Depth Estimation)** with hybrid CPU/GPU execution support.
 
 ## ✨ Key Features
 
 ### Architecture & Performance
-- **Modular Design**: UI (`WpfAiRunner`) and Inference Engine (`LamaEngine`) are strictly separated for maintainability.
+- **Modular Multi-Model UI**: Features a sidebar menu to switch between different model views (`LamaView`, `DepthView`) dynamically.
 - **Hybrid Execution**: Supports both **CPU** and **GPU (CUDA)** with a run-time toggle switch.
-- **Smart Fallback**: Automatically falls back to CPU if GPU initialization fails (e.g., missing drivers).
-- **Optimization**: Includes **Warm-up** logic to eliminate initial inference latency and async processing to prevent UI freezing.
+- **Smart Fallback**: Automatically falls back to CPU if GPU initialization fails.
+- **Optimization**: Includes **GPU Warm-up** logic to eliminate initial inference latency and async processing to prevent UI freezing.
 
-### LaMa Implementation Details
-- **Smart Preprocessing**: Automatically crops and resizes the ROI (Region of Interest) to `512x512` for the model, then seamlessly pastes the result back to the original resolution.
-- **Auto Scale**: Detects model output range dynamically to ensure correct color rendering.
+### 1. LaMa (Inpainting)
+- **Smart Preprocessing**: Automatically crops and resizes the ROI to `512x512`, then pastes the result back to the original resolution.
 - **Masking Tools**:
   - **Rect**: Drag to create rectangular masks.
   - **Brush**: Freehand masking with adjustable brush size.
+
+### 2. Depth Anything V2 (Depth Estimation)
+- **Visualisation**: Converts model output (disparity) into a normalized grayscale depth map (Brighter = Near, Darker = Far).
+- **Fast Inference**: Supports the **V2 Small** model for real-time performance.
 
 ## 🛠️ Build & Run
 
@@ -41,18 +44,24 @@ To enable CUDA acceleration:
 
 ## 📂 Project Structure
 
-- **WpfAiRunner** (UI): Handles user interaction, rendering, and model selection.
-- **LamaEngine** (Library): Encapsulates ONNX session management, tensor processing, and image manipulation logic.
+- **WpfAiRunner** (UI): Handles main window, view switching (`Views/`), and user interaction.
+- **LamaEngine** (Library): Logic for LaMa Inpainting (Preprocessing, Inference, Postprocessing).
+- **DepthEngine** (Library): Logic for Depth Anything V2 estimation.
 
 ## ⚖️ License & Acknowledgements
 
 This project uses third-party open-source software and pretrained models.
 
-- **Original Paper**: [Resolution-robust Large Mask Inpainting with Fourier Convolutions](https://arxiv.org/abs/2109.07161) (WACV 2022)
-- **Official Repository**: [advimman/lama](https://github.com/advimman/lama) (Apache 2.0)
+### LaMa (Large Mask Inpainting)
+- **Original Paper**: [Resolution-robust Large Mask Inpainting with Fourier Convolutions](https://arxiv.org/abs/2109.07161)
 - **Model Source**: [LaMa-ONNX via HuggingFace](https://huggingface.co/Carve/LaMa-ONNX)
-  - **Important**: You **MUST** use the `lama_fp32.onnx` file.
-  - *Reason: This application currently implements FP32 tensor processing. Using FP16 or quantized models (`lama.onnx`) will cause a crash due to input type mismatch.*
+  - **Important**: You **MUST** use `lama_fp32.onnx`. (FP16/Quantized models may cause crash due to input type mismatch).
+
+### Depth Anything V2
+- **Original Paper**: [Depth Anything V2](https://arxiv.org/abs/2406.09414)
+- **Official Repository**: [DepthAnything/Depth-Anything-V2](https://github.com/DepthAnything/Depth-Anything-V2)
+- **Model Source**: [onnx-community/depth-anything-v2-small](https://huggingface.co/onnx-community/depth-anything-v2-small/tree/main/onnx)
+  - *Recommended File*: `model.onnx` (located in the `onnx` folder).
 
 ### Disclaimer
 This project is an independent implementation for testing and educational purposes.
