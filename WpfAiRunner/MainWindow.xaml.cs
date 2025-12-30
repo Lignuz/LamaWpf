@@ -31,6 +31,7 @@ public partial class MainWindow : Window
                 "Depth" => new Views.DepthView(),
                 "Sam" => new Views.SamView(),   // MobileSAM / SAM 2 ХыЧе
                 "Esrgan" => new Views.RealEsrganView(),
+                "Rmbg" => new Views.RmbgView(),
                 _ => new Views.WelcomeView()
             };
         }

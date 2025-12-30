@@ -20,7 +20,7 @@ if (-not (Test-Path $modelsDir)) {
     Write-Host "[Info] Created 'models' directory." -ForegroundColor Yellow
 }
 
-# 다운로드 함수 (실시간 진행률 표시 기능 포함)
+# 다운로드 함수 (이어받기/진행률 표시)
 function Download-FileWithProgress {
     param (
         [string]$Url,
@@ -29,7 +29,7 @@ function Download-FileWithProgress {
 
     try {
         $httpClient = New-Object System.Net.Http.HttpClient
-        $httpClient.Timeout = [TimeSpan]::FromMinutes(30) # 타임아웃 30분
+        $httpClient.Timeout = [TimeSpan]::FromMinutes(30)
 
         # 헤더만 먼저 읽어서 파일 크기 확인
         $response = $httpClient.GetAsync($Url, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).Result
@@ -38,7 +38,6 @@ function Download-FileWithProgress {
         $totalBytes = $response.Content.Headers.ContentLength
         # ContentLength가 없는 경우 대비
         if ($null -eq $totalBytes) { $totalBytes = 0 }
-        
         $totalMB = $totalBytes / 1MB
 
         $contentStream = $response.Content.ReadAsStreamAsync().Result
@@ -59,9 +58,7 @@ function Download-FileWithProgress {
                 
                 # 진행률 계산 및 출력
                 $currentMB = $totalRead / 1MB
-                
                 Write-Host -NoNewline "`r    Progress: "
-                
                 if ($totalBytes -gt 0) {
                     $percent = ($totalRead / $totalBytes) * 100
                     Write-Host -NoNewline "$("{0:N2}" -f $currentMB) MB / $(" {0:N2}" -f $totalMB) MB " -ForegroundColor Yellow
@@ -72,8 +69,7 @@ function Download-FileWithProgress {
                 }
             }
         } while ($read -gt 0)
-
-        Write-Host "" # 줄바꿈
+        Write-Host ""
     }
     catch {
         Write-Host "`n[Error] Download failed: $_" -ForegroundColor Red
@@ -98,13 +94,15 @@ $models = @(
     @{ Name = "sam_mask_decoder_multi.onnx";      Url = "https://huggingface.co/Acly/MobileSAM/resolve/main/sam_mask_decoder_multi.onnx?download=true" },
     @{ Name = "sam2_hiera_small.encoder.onnx";    Url = "https://huggingface.co/vietanhdev/segment-anything-2-onnx-models/resolve/main/sam2_hiera_small.encoder.onnx?download=true" },
     @{ Name = "sam2_hiera_small.decoder.onnx";    Url = "https://huggingface.co/vietanhdev/segment-anything-2-onnx-models/resolve/main/sam2_hiera_small.decoder.onnx?download=true" },
-    @{ Name = "Real-ESRGAN-x4plus.onnx";          Url = "https://huggingface.co/qualcomm/Real-ESRGAN-x4plus/resolve/83db0da6e1b4969f85fe60ee713bd2c2b3160c23/Real-ESRGAN-x4plus.onnx?download=true" }
+    @{ Name = "Real-ESRGAN-x4plus.onnx";          Url = "https://huggingface.co/qualcomm/Real-ESRGAN-x4plus/resolve/83db0da6e1b4969f85fe60ee713bd2c2b3160c23/Real-ESRGAN-x4plus.onnx?download=true" },
+    @{ Name = "rmbg-1.4.onnx";                    Url = "https://huggingface.co/briaai/RMBG-1.4/resolve/main/onnx/model.onnx?download=true" }
 )
 
 # 메인 루프
 foreach ($model in $models) {
     $outputPath = Join-Path $modelsDir $model.Name
 
+    # 파일이 존재하면 다운로드 건너뜀 (Skip Logic)
     if (Test-Path $outputPath) {
         Write-Host "[Skip] $($model.Name)" -NoNewline -ForegroundColor DarkGray
         Write-Host " (Already exists)" -ForegroundColor Gray
