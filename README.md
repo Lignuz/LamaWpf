@@ -1,12 +1,12 @@
 ﻿# WpfAiRunner
 
 A high-performance WPF application for running local AI models via **ONNX Runtime**.
-This project demonstrates a production-ready implementation of **LaMa (Inpainting)**, **Depth Anything V2 (Depth Estimation)**, and **Segment Anything (MobileSAM & SAM 2)** with hybrid CPU/GPU execution support.
+This project demonstrates a production-ready implementation of **LaMa (Inpainting)**, **Depth Anything V2 (Depth Estimation)**, **Segment Anything (MobileSAM & SAM 2)**, and **Real-ESRGAN (Super Resolution)** with hybrid CPU/GPU execution support.
 
 ## ✨ Key Features
 
 ### Architecture & Performance
-- **Modular Multi-Model UI**: Features a sidebar menu to switch between different model views (`LamaView`, `DepthView`, `SamView`) dynamically.
+- **Modular Multi-Model UI**: Features a sidebar menu to switch between different model views (`LamaView`, `DepthView`, `SamView`, `RealEsrganView`) dynamically.
 - **Hybrid Execution**: Supports both **CPU** and **GPU (CUDA)** with a run-time toggle switch.
 - **Smart Fallback**: Automatically falls back to CPU if GPU initialization fails.
 - **Optimization**: Includes **GPU Warm-up** logic to eliminate initial inference latency and async processing to prevent UI freezing.
@@ -30,6 +30,12 @@ This project demonstrates a production-ready implementation of **LaMa (Inpaintin
   4. **Mask Overlay**: The generated mask is dynamically cropped and resized to match the original image resolution.
 - **Automated Encoder-Decoder Matching**: Logic to detect and match Encoder/Decoder pairs based on filenames (e.g., matching `tiny` encoder with `tiny` decoder for SAM 2).
 - **Mask Post-processing**: Applies **Bicubic Interpolation** and **Soft Masking** (Sigmoid) when upscaling the raw model output (256x256) to the original image size.
+
+### 4. Real-ESRGAN (Super Resolution)
+- **x4 Upscaling**: Restores and upscales low-resolution images to 4x their original size.
+- **Tiling Strategy**: Implements a sliding window approach with configurable tile size (e.g., 128x128) to process high-resolution images without exceeding memory limits.
+- **Seamless Reconstruction**: Uses an **Overlap & Crop** technique (default 14px padding) to eliminate grid artifacts at tile boundaries during the merging process.
+- **Output Management**: Provides progress monitoring during processing and supports saving the result as PNG.
 
 ## 🛠️ Build & Run
 
@@ -58,6 +64,7 @@ To enable CUDA acceleration:
 - **LamaEngine** (Library): Logic for LaMa Inpainting (Preprocessing, Inference, Postprocessing).
 - **DepthEngine** (Library): Logic for Depth Anything V2 estimation.
 - **SamEngine** (Library): Unified logic for both **MobileSAM** and **SAM 2** (Encoder-Decoder pipeline, Coordinate mapping, Dynamic mask processing).
+- **UpscalingEngine** (Library): Logic for Real-ESRGAN Super Resolution (Tiling, Inference, Overlap merging).
 
 ## ⚖️ License & Acknowledgements
 
@@ -87,6 +94,13 @@ This project uses third-party open-source software and pretrained models.
 - **Original Repository**: [facebookresearch/sam2](https://github.com/facebookresearch/sam2)
 - **Model Source**: [vietanhdev/segment-anything-2-onnx-models](https://huggingface.co/vietanhdev/segment-anything-2-onnx-models)
 - **Supported Variants**: `tiny`, `small`, `base_plus`, `large` (Encoder & Decoder pairs required).
+
+### Real-ESRGAN (Super Resolution)
+- **Original Paper**: [Real-ESRGAN: Training Real-World Blind Super-Resolution with Pure Synthetic Data](https://arxiv.org/abs/2107.10833)
+- **Original Repository**: [xinntao/Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN)
+- **Model Source**: [qualcomm/Real-ESRGAN-x4plus via HuggingFace](https://huggingface.co/qualcomm/Real-ESRGAN-x4plus/tree/83db0da6e1b4969f85fe60ee713bd2c2b3160c23)
+  - *Note*: The model is located in a specific commit tree. Please use the link above.
+  - *Recommended File*: `Real-ESRGAN-x4plus.onnx`
 
 ### Disclaimer
 This project is an independent implementation for testing and educational purposes.
