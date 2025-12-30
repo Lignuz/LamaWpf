@@ -51,12 +51,19 @@ To enable CUDA acceleration:
 - **cuDNN 8.x** (compatible with CUDA 11.x)
 - *Note: If requirements are not met, the app will safely run in CPU mode.*
 
+### Model Setup (Easy Way)
+This project requires several large ONNX models. A PowerShell script is provided to download them automatically.
+
+1.  Right-click `download_models.ps1` in the project root.
+2.  Select **Run with PowerShell**.
+3.  The script will create a `models/` directory and download all required models (LaMa, Depth Anything V2, SAM, Real-ESRGAN).
+
 ### Setup
-1. Open `WpfAiRunner.sln` in Visual Studio.
-2. Restore NuGet packages.
-   - **Important**: This project depends on `Microsoft.ML.OnnxRuntime.Gpu` version **1.15.1**. Do not update to newer versions to ensure compatibility.
-3. Set the build platform to **x64**.
-4. Build and Run the `WpfAiRunner` project.
+1.  Open `WpfAiRunner.sln` in Visual Studio.
+2.  Restore NuGet packages.
+    - **Important**: This project depends on `Microsoft.ML.OnnxRuntime.Gpu` version **1.15.1**. Do not update to newer versions to ensure compatibility.
+3.  Set the build platform to **x64**.
+4.  Build and Run the `WpfAiRunner` project.
 
 ## 📂 Project Structure
 
@@ -79,7 +86,7 @@ This project uses third-party open-source software and pretrained models.
 - **Original Paper**: [Depth Anything V2](https://arxiv.org/abs/2406.09414)
 - **Official Repository**: [DepthAnything/Depth-Anything-V2](https://github.com/DepthAnything/Depth-Anything-V2)
 - **Model Source**: [onnx-community/depth-anything-v2-small](https://huggingface.co/onnx-community/depth-anything-v2-small/tree/main/onnx)
-  - *Recommended File*: `model.onnx` (located in the `onnx` folder).
+  - *Recommended File*: `depth_anything_v2_small.onnx` (Renamed from `model.onnx`).
 
 ### Segment Anything (SAM)
 
