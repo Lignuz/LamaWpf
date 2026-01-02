@@ -33,6 +33,7 @@ public partial class MainWindow : Window
                 "Esrgan" => new Views.RealEsrganView(),
                 "Rmbg" => new Views.RmbgView(),
                 "Face" => new Views.FaceView(),
+                "Anime" => new Views.AnimeGanView(),
                 _ => new Views.WelcomeView()
             };
         }

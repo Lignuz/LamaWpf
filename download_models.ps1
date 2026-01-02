@@ -98,7 +98,10 @@ $models = @(
     @{ Name = "rmbg-1.4.onnx";                    Url = "https://huggingface.co/briaai/RMBG-1.4/resolve/main/onnx/model.onnx?download=true" },
 	@{ Name = "version-RFB-320.onnx";             Url = "https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/raw/master/models/onnx/version-RFB-320.onnx?download=true" },
 	@{ Name = "yolov8n-face.onnx";                Url = "https://huggingface.co/deepghs/yolo-face/resolve/main/yolov8n-face/model.onnx?download=true" },
-	@{ Name = "yolov11n-face.onnx";               Url = "https://huggingface.co/deepghs/yolo-face/resolve/main/yolov11n-face/model.onnx?download=true" }
+	@{ Name = "yolov11n-face.onnx";               Url = "https://huggingface.co/deepghs/yolo-face/resolve/main/yolov11n-face/model.onnx?download=true" },
+	@{ Name = "AnimeGANv2_Hayao.onnx";    Url = "https://huggingface.co/vumichien/AnimeGANv2_Hayao/resolve/main/AnimeGANv2_Hayao.onnx?download=true" },
+    @{ Name = "AnimeGANv2_Shinkai.onnx";  Url = "https://huggingface.co/vumichien/AnimeGANv2_Shinkai/resolve/main/AnimeGANv2_Shinkai.onnx?download=true" },
+    @{ Name = "AnimeGANv2_Paprika.onnx";  Url = "https://huggingface.co/vumichien/AnimeGANv2_Paprika/resolve/main/AnimeGANv2_Paprika.onnx?download=true" }
 )
 
 # 메인 루프

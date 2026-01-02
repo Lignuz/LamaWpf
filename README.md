@@ -1,7 +1,7 @@
 ﻿# WpfAiRunner
 
 A high-performance WPF application for running local AI models via **ONNX Runtime**.
-This project demonstrates a production-ready implementation of **LaMa (Inpainting)**, **Depth Anything V2 (Depth Estimation)**, **Segment Anything (MobileSAM & SAM 2)**, **Real-ESRGAN (Super Resolution)**, **RMBG-1.4 (Background Removal)**, and **Face Privacy (Mosaic)** with hybrid CPU/GPU execution support.
+This project demonstrates a production-ready implementation of **LaMa (Inpainting)**, **Depth Anything V2 (Depth Estimation)**, **Segment Anything (MobileSAM & SAM 2)**, **Real-ESRGAN (Super Resolution)**, **RMBG-1.4 (Background Removal)**, **Face Privacy (Mosaic)**, and **AnimeGAN (Style Transfer)** with hybrid CPU/GPU execution support.
 
 ## ✨ Key Features
 
@@ -55,6 +55,13 @@ This project demonstrates a production-ready implementation of **LaMa (Inpaintin
 - **Interactive Options**: Users can independently toggle **Blur** and **Bounding Box** visualization with instant rendering (no re-inference required).
 - **Post-Processing**: Implements **NMS (Non-Maximum Suppression)** to eliminate duplicate detection boxes.
 
+### 7. AnimeGAN (Style Transfer)
+- **Triple Style Support**: Transforms photos into 3 distinct animation styles:
+  - **Hayao**: Hayao Miyazaki (Studio Ghibli) style.
+  - **Shinkai**: Makoto Shinkai (Your Name) style.
+  - **Paprika**: Satoshi Kon (Paprika) style.
+- **Optimization**: Automatically adjusts input resolution to optimal multiples (32px) for artifact-free rendering.
+
 ## 🛠️ Build & Run
 
 ### 1. Prerequisites
@@ -74,7 +81,7 @@ This project requires several large ONNX models. A PowerShell script is provided
 
 1.  Right-click `download_models.ps1` in the project root.
 2.  Select **Run with PowerShell**.
-3.  The script will create a `models/` directory and download all required models (LaMa, Depth, SAM, Real-ESRGAN, RMBG, RFB-320, YOLOv8, YOLOv11).
+3.  The script will create a `models/` directory and download all required models (LaMa, Depth, SAM, Real-ESRGAN, RMBG, Face Models, AnimeGAN Models).
     * *Note: The script automatically skips files that have already been downloaded.*
 
 ### 4. Setup (Build)
@@ -94,7 +101,8 @@ This project requires several large ONNX models. A PowerShell script is provided
   - **Sam/**: Logic for MobileSAM & SAM 2.
   - **Upscaling/**: Logic for Real-ESRGAN.
   - **Rmbg/**: Logic for RMBG-1.4 Background Removal.
-  - **Face/**: Logic for Face Detection (RFB-320, YOLOv8, YOLOv11) and Mosaic processing.
+  - **Face/**: Logic for Face Detection (RFB-320, YOLOv8/11) and Mosaic processing.
+  - **Style/**: Logic for AnimeGAN style transfer.
 
 ## ⚖️ License & Acknowledgements
 
@@ -141,12 +149,17 @@ This project uses third-party open-source software and pretrained models.
 #### YOLOv8n-Face
 - **Original Repository**: [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics)
 - **Model Source**: [deepghs/yolo-face via HuggingFace](https://huggingface.co/deepghs/yolo-face)
-  - *Recommended File*: `yolov8n-face/model.onnx` (Renamed to `yolov8n-face.onnx`)
+  - *Recommended File*: `yolov8n-face.onnx`
 
 #### YOLOv11n-Face
 - **Original Repository**: [Ultralytics YOLO11](https://github.com/ultralytics/ultralytics)
 - **Model Source**: [deepghs/yolo-face via HuggingFace](https://huggingface.co/deepghs/yolo-face)
-  - *Recommended File*: `yolov11n-face/model.onnx` (Renamed to `yolov11n-face.onnx`)
+  - *Recommended File*: `yolov11n-face.onnx`
+
+### AnimeGAN (Style Transfer)
+- **Original Repository**: [TachibanaYoshino/AnimeGANv2](https://github.com/TachibanaYoshino/AnimeGANv2)
+- **Model Source**: [vumichien via HuggingFace](https://huggingface.co/vumichien)
+  - *Files*: `AnimeGANv2_Hayao.onnx`, `AnimeGANv2_Shinkai.onnx`, `AnimeGANv2_Paprika.onnx`
 
 ### Disclaimer
 This project is an independent implementation for testing and educational purposes.
