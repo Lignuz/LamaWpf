@@ -242,7 +242,6 @@ public partial class FaceView : UserControl, IDisposable
         PbarLoading.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         CboModelSelect.IsEnabled = !busy;
 
-        BtnLoadModel.IsEnabled = !busy;
         ChkUseGpu.IsEnabled = !busy;
         BtnOpenImage.IsEnabled = !busy && _detector != null;
         BtnRun.IsEnabled = !busy && _detector != null && _inputBytes != null;
