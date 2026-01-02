@@ -96,7 +96,9 @@ $models = @(
     @{ Name = "sam2_hiera_small.decoder.onnx";    Url = "https://huggingface.co/vietanhdev/segment-anything-2-onnx-models/resolve/main/sam2_hiera_small.decoder.onnx?download=true" },
     @{ Name = "Real-ESRGAN-x4plus.onnx";          Url = "https://huggingface.co/qualcomm/Real-ESRGAN-x4plus/resolve/83db0da6e1b4969f85fe60ee713bd2c2b3160c23/Real-ESRGAN-x4plus.onnx?download=true" },
     @{ Name = "rmbg-1.4.onnx";                    Url = "https://huggingface.co/briaai/RMBG-1.4/resolve/main/onnx/model.onnx?download=true" },
-	@{ Name = "version-RFB-320.onnx";             Url = "https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/raw/master/models/onnx/version-RFB-320.onnx?download=true" }
+	@{ Name = "version-RFB-320.onnx";             Url = "https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB/raw/master/models/onnx/version-RFB-320.onnx?download=true" },
+	@{ Name = "yolov8n-face.onnx";                Url = "https://huggingface.co/deepghs/yolo-face/resolve/main/yolov8n-face/model.onnx?download=true" },
+	@{ Name = "yolov11n-face.onnx";               Url = "https://huggingface.co/deepghs/yolo-face/resolve/main/yolov11n-face/model.onnx?download=true" }
 )
 
 # 메인 루프

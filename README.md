@@ -45,9 +45,13 @@ This project demonstrates a production-ready implementation of **LaMa (Inpaintin
 - **Visualization**: Features a checkerboard pattern background in the UI to clearly verify transparency.
 
 ### 6. Face Privacy (Mosaic & Detection)
-- **Ultra-Lightweight Detection**: Uses the **RFB-320** model (< 1MB) for incredibly fast face detection on CPU.
+- **Triple Model Support**:
+  - **RFB-320 (Fast)**: Ultra-lightweight (< 1MB) model for maximum speed on CPU.
+  - **YOLOv8n-Face (Robust)**: Excellent balance of speed and accuracy for general usage.
+  - **YOLOv11n-Face (New SOTA)**: The latest architecture offering superior detection performance and efficiency.
+- **Smart Switching**: Seamlessly switch between Fast, Robust, and SOTA models via the UI dropdown.
 - **Privacy Protection**: Automatically applies a **Gaussian Blur** (Mosaic) to detected faces.
-- **Smart Adjustments**: Automatically adjusts blur intensity based on the size of the detected face to prevent errors.
+- **Smart Adjustments**: Automatically adjusts blur intensity based on the size of the detected face.
 - **Interactive Options**: Users can independently toggle **Blur** and **Bounding Box** visualization with instant rendering (no re-inference required).
 - **Post-Processing**: Implements **NMS (Non-Maximum Suppression)** to eliminate duplicate detection boxes.
 
@@ -70,7 +74,7 @@ This project requires several large ONNX models. A PowerShell script is provided
 
 1.  Right-click `download_models.ps1` in the project root.
 2.  Select **Run with PowerShell**.
-3.  The script will create a `models/` directory and download all required models (LaMa, Depth, SAM, Real-ESRGAN, RMBG, Face Detection).
+3.  The script will create a `models/` directory and download all required models (LaMa, Depth, SAM, Real-ESRGAN, RMBG, RFB-320, YOLOv8, YOLOv11).
     * *Note: The script automatically skips files that have already been downloaded.*
 
 ### 4. Setup (Build)
@@ -90,7 +94,7 @@ This project requires several large ONNX models. A PowerShell script is provided
   - **Sam/**: Logic for MobileSAM & SAM 2.
   - **Upscaling/**: Logic for Real-ESRGAN.
   - **Rmbg/**: Logic for RMBG-1.4 Background Removal.
-  - **Face/**: Logic for Face Detection (RFB-320) and Mosaic processing.
+  - **Face/**: Logic for Face Detection (RFB-320, YOLOv8, YOLOv11) and Mosaic processing.
 
 ## ⚖️ License & Acknowledgements
 
@@ -129,8 +133,20 @@ This project uses third-party open-source software and pretrained models.
   - *License Note*: RMBG-1.4 is released under a **Creative Commons license for non-commercial use**. For commercial use, please consult BRIA AI's licensing terms.
 
 ### Face Detection (Face Privacy)
+
+#### RFB-320
 - **Original Repository**: [Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB](https://github.com/Linzaer/Ultra-Light-Fast-Generic-Face-Detector-1MB)
 - **Model Source**: `version-RFB-320.onnx` (Downloaded directly from the original GitHub repository).
+
+#### YOLOv8n-Face
+- **Original Repository**: [Ultralytics YOLOv8](https://github.com/ultralytics/ultralytics)
+- **Model Source**: [deepghs/yolo-face via HuggingFace](https://huggingface.co/deepghs/yolo-face)
+  - *Recommended File*: `yolov8n-face/model.onnx` (Renamed to `yolov8n-face.onnx`)
+
+#### YOLOv11n-Face
+- **Original Repository**: [Ultralytics YOLO11](https://github.com/ultralytics/ultralytics)
+- **Model Source**: [deepghs/yolo-face via HuggingFace](https://huggingface.co/deepghs/yolo-face)
+  - *Recommended File*: `yolov11n-face/model.onnx` (Renamed to `yolov11n-face.onnx`)
 
 ### Disclaimer
 This project is an independent implementation for testing and educational purposes.

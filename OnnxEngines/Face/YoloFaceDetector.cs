@@ -8,27 +8,28 @@ using OnnxEngines.Utils;
 
 namespace OnnxEngines.Face;
 
-public class FaceDetector : IFaceDetector
+public class YoloFaceDetector : IFaceDetector
 {
     private readonly InferenceSession _session;
     public string DeviceMode { get; private set; } = "CPU";
 
-    private const int InputWidth = 320;
-    private const int InputHeight = 240;
+    // YOLOv8n-Face 입력 크기
+    private const int InputSize = 640;
 
-    public FaceDetector(string modelPath, bool useGpu = false)
+    public YoloFaceDetector(string modelPath, bool useGpu = false)
     {
         (_session, DeviceMode) = OnnxHelper.LoadSession(modelPath, useGpu);
     }
 
-    public List<Rectangle> DetectFaces(byte[] imageBytes, float confThreshold = 0.7f)
+    public List<Rectangle> DetectFaces(byte[] imageBytes, float confThreshold = 0.5f)
     {
         using var image = Image.Load<Rgba32>(imageBytes);
         int origW = image.Width;
         int origH = image.Height;
 
-        using var resized = image.Clone(x => x.Resize(InputWidth, InputHeight));
-        var inputTensor = new DenseTensor<float>(new[] { 1, 3, InputHeight, InputWidth });
+        // 1. 전처리 (Resize 640x640, Normalize 0..1)
+        using var resized = image.Clone(x => x.Resize(InputSize, InputSize));
+        var inputTensor = new DenseTensor<float>(new[] { 1, 3, InputSize, InputSize });
 
         resized.ProcessPixelRows(accessor =>
         {
@@ -37,43 +38,50 @@ public class FaceDetector : IFaceDetector
                 var row = accessor.GetRowSpan(y);
                 for (int x = 0; x < accessor.Width; x++)
                 {
-                    inputTensor[0, 0, y, x] = (row[x].R - 127.0f) / 128.0f;
-                    inputTensor[0, 1, y, x] = (row[x].G - 127.0f) / 128.0f;
-                    inputTensor[0, 2, y, x] = (row[x].B - 127.0f) / 128.0f;
+                    inputTensor[0, 0, y, x] = row[x].R / 255.0f;
+                    inputTensor[0, 1, y, x] = row[x].G / 255.0f;
+                    inputTensor[0, 2, y, x] = row[x].B / 255.0f;
                 }
             }
         });
 
         var inputs = new List<NamedOnnxValue>
         {
-            NamedOnnxValue.CreateFromTensor(_session.InputMetadata.Keys.First(), inputTensor)
+            NamedOnnxValue.CreateFromTensor("images", inputTensor)
         };
 
+        // 2. 추론
         using var results = _session.Run(inputs);
-        var confidences = results.First(x => x.Name == "scores").AsTensor<float>();
-        var boxes = results.First(x => x.Name == "boxes").AsTensor<float>();
+        // Output: [1, 5, 8400] (cx, cy, w, h, score)
+        var output = results.First().AsTensor<float>();
 
         var candidates = new List<(Rectangle Rect, float Score)>();
-        int numAnchors = confidences.Dimensions[1];
+        int anchors = output.Dimensions[2]; // 8400
 
-        for (int i = 0; i < numAnchors; i++)
+        for (int i = 0; i < anchors; i++)
         {
-            float score = confidences[0, i, 1];
+            float score = output[0, 4, i]; // Score
             if (score > confThreshold)
             {
-                float x = boxes[0, i, 0] * origW;
-                float y = boxes[0, i, 1] * origH;
-                float w = (boxes[0, i, 2] - boxes[0, i, 0]) * origW;
-                float h = (boxes[0, i, 3] - boxes[0, i, 1]) * origH;
+                float cx = output[0, 0, i];
+                float cy = output[0, 1, i];
+                float w = output[0, 2, i];
+                float h = output[0, 3, i];
 
-                candidates.Add((new Rectangle((int)x, (int)y, (int)w, (int)h), score));
+                // Scale 복원
+                float x = (cx - w / 2) * (origW / (float)InputSize);
+                float y = (cy - h / 2) * (origH / (float)InputSize);
+                float width = w * (origW / (float)InputSize);
+                float height = h * (origH / (float)InputSize);
+
+                candidates.Add((new Rectangle((int)x, (int)y, (int)width, (int)height), score));
             }
         }
 
         return NMS(candidates);
     }
 
-    private List<Rectangle> NMS(List<(Rectangle Rect, float Score)> boxes, float iouThreshold = 0.3f)
+    private List<Rectangle> NMS(List<(Rectangle Rect, float Score)> boxes, float iouThreshold = 0.45f)
     {
         var result = new List<Rectangle>();
         var sorted = boxes.OrderByDescending(x => x.Score).ToList();
@@ -97,6 +105,7 @@ public class FaceDetector : IFaceDetector
         return intersectionArea / unionArea;
     }
 
+    // 그리기 함수 (FaceDetector와 동일 로직)
     public byte[] ApplyBlur(byte[] imageBytes, List<Rectangle> faces, int blurSigma = 15)
     {
         using var image = Image.Load<Rgba32>(imageBytes);
@@ -104,7 +113,6 @@ public class FaceDetector : IFaceDetector
         {
             var roi = Rectangle.Intersect(face, image.Bounds);
             if (roi.Width <= 1 || roi.Height <= 1) continue;
-
             int safeSigma = Math.Min(blurSigma, Math.Min(roi.Width, roi.Height) / 4);
             if (safeSigma < 1) safeSigma = 1;
 
@@ -123,12 +131,7 @@ public class FaceDetector : IFaceDetector
     {
         using var image = Image.Load<Rgba32>(imageBytes);
         var pen = Pens.Solid(Color.Red, thickness);
-
-        image.Mutate(ctx =>
-        {
-            foreach (var face in faces) ctx.Draw(pen, face);
-        });
-
+        image.Mutate(ctx => { foreach (var face in faces) ctx.Draw(pen, face); });
         using var ms = new MemoryStream();
         image.SaveAsPng(ms);
         return ms.ToArray();

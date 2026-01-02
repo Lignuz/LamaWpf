@@ -11,10 +11,13 @@ namespace WpfAiRunner.Views;
 
 public partial class FaceView : UserControl, IDisposable
 {
-    private FaceDetector? _detector;
+    private IFaceDetector? _detector;
     private byte[]? _inputBytes;
-    private string? _currentModelPath;
     private List<Rectangle>? _cachedFaces;
+
+    private string? _rfbPath;
+    private string? _yolo8Path;
+    private string? _yolo11Path;
 
     public FaceView() => InitializeComponent();
     public void Dispose() => _detector?.Dispose();
@@ -22,52 +25,76 @@ public partial class FaceView : UserControl, IDisposable
     private async void UserControl_Loaded(object sender, RoutedEventArgs e)
     {
 #if DEBUG
-        if (_detector == null && string.IsNullOrEmpty(_currentModelPath))
-        {
-            string? debugPath = OnnxHelper.FindModelInDebug("version-RFB-320.onnx");
-            if (debugPath != null)
-            {
-                _currentModelPath = debugPath;
-                await ReloadModel();
-            }
-        }
+        _rfbPath = OnnxHelper.FindModelInDebug("version-RFB-320.onnx");
+        _yolo8Path = OnnxHelper.FindModelInDebug("yolov8n-face.onnx");
+        _yolo11Path = OnnxHelper.FindModelInDebug("yolov11n-face.onnx"); // [추가]
+        await ReloadModel();
 #endif
     }
 
-    private async void BtnLoadModel_Click(object sender, RoutedEventArgs e)
+    private async void CboModelSelect_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        var dlg = new OpenFileDialog { Filter = "ONNX (*.onnx)|*.onnx" };
-        if (dlg.ShowDialog() == true)
-        {
-            _currentModelPath = dlg.FileName;
-            await ReloadModel();
-        }
-    }
-
-    private async void ChkUseGpu_Click(object sender, RoutedEventArgs e)
-    {
-        if (!string.IsNullOrEmpty(_currentModelPath))
-            await ReloadModel();
+        if (!IsLoaded) return;
+        await ReloadModel();
     }
 
     private async Task ReloadModel()
     {
-        if (string.IsNullOrEmpty(_currentModelPath)) return;
-
-        SetBusy(true, "Loading Model...");
+        SetBusy(true, "Switching Model...");
         try
         {
-            bool useGpu = ChkUseGpu.IsChecked == true;
             _detector?.Dispose();
-            _detector = await Task.Run(() => new FaceDetector(_currentModelPath!, useGpu));
+            _detector = null;
 
-            TxtStatus.Text = $"Model Loaded ({_detector.DeviceMode})";
+            bool useGpu = ChkUseGpu.IsChecked == true;
+            int selectedIndex = CboModelSelect.SelectedIndex;
+            string modelName = selectedIndex switch
+            {
+                0 => "RFB-320",
+                1 => "YOLOv8",
+                2 => "YOLOv11",
+                _ => "Unknown"
+            };
 
-            if (useGpu && _detector.DeviceMode.Contains("CPU"))
-                ChkUseGpu.IsChecked = false;
+            await Task.Run(() =>
+            {
+                if (selectedIndex == 0) // RFB-320
+                {
+                    if (!string.IsNullOrEmpty(_rfbPath) && File.Exists(_rfbPath))
+                        _detector = new FaceDetector(_rfbPath, useGpu);
+                }
+                else if (selectedIndex == 1) // YOLOv8
+                {
+                    if (!string.IsNullOrEmpty(_yolo8Path) && File.Exists(_yolo8Path))
+                        _detector = new YoloFaceDetector(_yolo8Path, useGpu);
+                }
+                else // YOLOv11 (YOLOv8과 동일한 엔진 사용)
+                {
+                    if (!string.IsNullOrEmpty(_yolo11Path) && File.Exists(_yolo11Path))
+                        _detector = new YoloFaceDetector(_yolo11Path, useGpu);
+                }
+            });
 
-            BtnOpenImage.IsEnabled = true;
-            if (_inputBytes != null) BtnRun.IsEnabled = true;
+            if (_detector != null)
+            {
+                TxtStatus.Text = $"{modelName} Loaded ({_detector.DeviceMode})";
+                if (useGpu && _detector.DeviceMode.Contains("CPU")) ChkUseGpu.IsChecked = false;
+
+                BtnOpenImage.IsEnabled = true;
+
+                // 모델 변경 시 이미지가 있다면 즉시 재추론
+                if (_inputBytes != null)
+                {
+                    BtnRun.IsEnabled = true;
+                    _cachedFaces = null;
+                    ImgOutput.Source = null;
+                    await RunDetection();
+                }
+            }
+            else
+            {
+                TxtStatus.Text = "Model file not found.";
+            }
         }
         catch (Exception ex)
         {
@@ -105,6 +132,11 @@ public partial class FaceView : UserControl, IDisposable
 
     private async void BtnRun_Click(object sender, RoutedEventArgs e)
     {
+        await RunDetection();
+    }
+
+    private async Task RunDetection()
+    {
         if (_detector == null || _inputBytes == null) return;
 
         if (_cachedFaces != null)
@@ -118,14 +150,11 @@ public partial class FaceView : UserControl, IDisposable
         {
             _cachedFaces = await Task.Run(() => _detector.DetectFaces(_inputBytes));
 
-            // 0개여도 return 하지 않고 진행
             if (_cachedFaces.Count == 0)
             {
-                TxtStatus.Text = "No faces found.";
-                // _cachedFaces는 빈 리스트 상태로 유지
+                TxtStatus.Text = "No faces found (Original shown).";
             }
 
-            // 결과 그리기 (0개면 원본 출력됨)
             await RenderResult();
         }
         catch (Exception ex)
@@ -149,11 +178,9 @@ public partial class FaceView : UserControl, IDisposable
 
     private async Task RenderResult()
     {
-        // _cachedFaces가 null이면 실행 안 함 (빈 리스트면 실행 함)
         if (_detector == null || _inputBytes == null || _cachedFaces == null) return;
 
         SetBusy(true, "Rendering...");
-
         try
         {
             bool applyBlur = ChkBlur.IsChecked == true;
@@ -161,14 +188,12 @@ public partial class FaceView : UserControl, IDisposable
 
             byte[] processedBytes = _inputBytes.ToArray();
 
-            // 얼굴이 하나라도 있을 때만 처리
             if (_cachedFaces.Count > 0)
             {
                 await Task.Run(() =>
                 {
                     if (applyBlur)
                         processedBytes = _detector.ApplyBlur(processedBytes, _cachedFaces);
-
                     if (drawBox)
                         processedBytes = _detector.DrawBoundingBoxes(processedBytes, _cachedFaces);
                 });
@@ -185,10 +210,7 @@ public partial class FaceView : UserControl, IDisposable
             ImgOutput.Source = resultBmp;
             BtnSave.IsEnabled = true;
 
-            // 상태 메시지 업데이트
-            if (_cachedFaces.Count == 0)
-                TxtStatus.Text = "No faces found (Original shown).";
-            else
+            if (_cachedFaces.Count > 0)
                 TxtStatus.Text = $"Done. {_cachedFaces.Count} faces processed.";
         }
         finally
@@ -200,7 +222,7 @@ public partial class FaceView : UserControl, IDisposable
     private void BtnSave_Click(object sender, RoutedEventArgs e)
     {
         if (ImgOutput.Source is not BitmapSource bmp) return;
-        var dlg = new SaveFileDialog { Filter = "PNG|*.png", FileName = "mosaic_result.png" };
+        var dlg = new SaveFileDialog { Filter = "PNG|*.png", FileName = "result.png" };
         if (dlg.ShowDialog() == true)
         {
             using var stream = new FileStream(dlg.FileName, FileMode.Create);
@@ -210,9 +232,15 @@ public partial class FaceView : UserControl, IDisposable
         }
     }
 
+    private async void ChkUseGpu_Click(object sender, RoutedEventArgs e)
+    {
+        await ReloadModel();
+    }
+
     private void SetBusy(bool busy, string? msg = null)
     {
         PbarLoading.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        CboModelSelect.IsEnabled = !busy;
 
         BtnLoadModel.IsEnabled = !busy;
         ChkUseGpu.IsEnabled = !busy;

@@ -13,8 +13,17 @@
         <Border Grid.Row="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="10" Margin="0,0,0,10">
             <DockPanel>
                 <StackPanel Orientation="Horizontal">
-                    <Button x:Name="BtnLoadModel" Content="📂 Load RFB-320" Click="BtnLoadModel_Click"/>
+
+                    <TextBlock Text="Model:" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource TextSecondary}"/>
+                    <ComboBox x:Name="CboModelSelect" Width="140" Margin="0,0,10,0" 
+                              SelectionChanged="CboModelSelect_SelectionChanged" SelectedIndex="0">
+                        <ComboBoxItem Content="⚡ RFB-320 (Fast)"/>
+                        <ComboBoxItem Content="🧠 YOLOv8 (Robust)"/>
+                        <ComboBoxItem Content="🚀 YOLOv11 (New SOTA)"/>
+                    </ComboBox>
+
                     <CheckBox x:Name="ChkUseGpu" Content="Use GPU" Click="ChkUseGpu_Click"/>
+
                     <Button x:Name="BtnOpenImage" Content="🖼️ Open Image" IsEnabled="False" Click="BtnOpenImage_Click"/>
 
                     <CheckBox x:Name="ChkBlur" Content="Blur" IsChecked="True" 
