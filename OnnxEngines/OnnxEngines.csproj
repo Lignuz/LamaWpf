@@ -15,4 +15,8 @@
 		<PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.7" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="NewFolder1\" />
+	</ItemGroup>
+
 </Project>

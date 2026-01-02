@@ -1,7 +1,7 @@
 ﻿# WpfAiRunner
 
 A high-performance WPF application for running local AI models via **ONNX Runtime**.
-This project demonstrates a production-ready implementation of **LaMa (Inpainting)**, **Depth Anything V2 (Depth Estimation)**, **Segment Anything (MobileSAM & SAM 2)**, **Real-ESRGAN (Super Resolution)**, **RMBG-1.4 (Background Removal)**, **Face Privacy (Mosaic)**, and **AnimeGAN (Style Transfer)** with hybrid CPU/GPU execution support.
+This project demonstrates a production-ready implementation of **LaMa (Inpainting)**, **Depth Anything V2 (Depth Estimation)**, **Segment Anything (MobileSAM & SAM 2)**, **Real-ESRGAN (Super Resolution)**, **RMBG-1.4 (Background Removal)**, **Face Privacy (Mosaic)**, **AnimeGAN (Style Transfer)**, and **DDColor (Image Colorization)** with hybrid CPU/GPU execution support.
 
 ## ✨ Key Features
 
@@ -62,6 +62,11 @@ This project demonstrates a production-ready implementation of **LaMa (Inpaintin
   - **Paprika**: Satoshi Kon (Paprika) style.
 - **Optimization**: Automatically adjusts input resolution to optimal multiples (32px) for artifact-free rendering.
 
+### 8. DDColor (Image Colorization)
+- **Photo-Realistic Colorization**: Automatically adds vibrant and realistic colors to black & white images using the Dual-Stream Decoder architecture.
+- **Advanced Color Space Pipeline**: Implements a rigorous **CIE Lab** color space conversion logic with accurate **D65 illuminant** handling to prevent color shifts and artifacts.
+- **High-Fidelity Blending**: Preserves the original image's luminance and details by blending the model's predicted chrominance (color) channels with the original lightness channel.
+
 ## 🛠️ Build & Run
 
 ### 1. Prerequisites
@@ -81,7 +86,7 @@ This project requires several large ONNX models. A PowerShell script is provided
 
 1.  Right-click `download_models.ps1` in the project root.
 2.  Select **Run with PowerShell**.
-3.  The script will create a `models/` directory and download all required models (LaMa, Depth, SAM, Real-ESRGAN, RMBG, Face Models, AnimeGAN Models).
+3.  The script will create a `models/` directory and download all required models.
     * *Note: The script automatically skips files that have already been downloaded.*
 
 ### 4. Setup (Build)
@@ -103,6 +108,7 @@ This project requires several large ONNX models. A PowerShell script is provided
   - **Rmbg/**: Logic for RMBG-1.4 Background Removal.
   - **Face/**: Logic for Face Detection (RFB-320, YOLOv8/11) and Mosaic processing.
   - **Style/**: Logic for AnimeGAN style transfer.
+  - **Colorization/**: Logic for DDColor image colorization.
 
 ## ⚖️ License & Acknowledgements
 
@@ -160,6 +166,12 @@ This project uses third-party open-source software and pretrained models.
 - **Original Repository**: [TachibanaYoshino/AnimeGANv2](https://github.com/TachibanaYoshino/AnimeGANv2)
 - **Model Source**: [vumichien via HuggingFace](https://huggingface.co/vumichien)
   - *Files*: `AnimeGANv2_Hayao.onnx`, `AnimeGANv2_Shinkai.onnx`, `AnimeGANv2_Paprika.onnx`
+
+### DDColor (Colorization)
+- **Original Paper**: [DDColor: Towards Photo-Realistic and Semantic-Aware Image Colorization](https://arxiv.org/abs/2212.11613)
+- **Original Repository**: [piddnad/DDColor](https://github.com/piddnad/DDColor)
+- **Model Source**: [crj/dl-ws via HuggingFace](https://huggingface.co/crj/dl-ws/blob/main/ddcolor.onnx)
+  - *Recommended File*: `ddcolor.onnx`
 
 ### Disclaimer
 This project is an independent implementation for testing and educational purposes.

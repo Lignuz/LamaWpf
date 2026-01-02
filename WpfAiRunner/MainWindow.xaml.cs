@@ -34,6 +34,7 @@ public partial class MainWindow : Window
                 "Rmbg" => new Views.RmbgView(),
                 "Face" => new Views.FaceView(),
                 "Anime" => new Views.AnimeGanView(),
+                "Color" => new Views.ColorizationView(),
                 _ => new Views.WelcomeView()
             };
         }

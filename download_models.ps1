@@ -101,7 +101,8 @@ $models = @(
 	@{ Name = "yolov11n-face.onnx";               Url = "https://huggingface.co/deepghs/yolo-face/resolve/main/yolov11n-face/model.onnx?download=true" },
 	@{ Name = "AnimeGANv2_Hayao.onnx";    Url = "https://huggingface.co/vumichien/AnimeGANv2_Hayao/resolve/main/AnimeGANv2_Hayao.onnx?download=true" },
     @{ Name = "AnimeGANv2_Shinkai.onnx";  Url = "https://huggingface.co/vumichien/AnimeGANv2_Shinkai/resolve/main/AnimeGANv2_Shinkai.onnx?download=true" },
-    @{ Name = "AnimeGANv2_Paprika.onnx";  Url = "https://huggingface.co/vumichien/AnimeGANv2_Paprika/resolve/main/AnimeGANv2_Paprika.onnx?download=true" }
+    @{ Name = "AnimeGANv2_Paprika.onnx";  Url = "https://huggingface.co/vumichien/AnimeGANv2_Paprika/resolve/main/AnimeGANv2_Paprika.onnx?download=true" },
+	@{ Name = "ddcolor.onnx";             Url = "https://huggingface.co/crj/dl-ws/resolve/main/ddcolor.onnx?download=true" }
 )
 
 # 메인 루프
