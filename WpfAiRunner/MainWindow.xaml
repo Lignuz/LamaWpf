@@ -60,6 +60,9 @@
                 <RadioButton Content="🌫️ RMBG-1.4 (Remove BG)" Style="{StaticResource MenuButtonStyle}" 
                              Click="Menu_Click" Tag="Rmbg"/>
 
+                <RadioButton Content="🙈 Face Privacy (Mosaic)" Style="{StaticResource MenuButtonStyle}" 
+                            Click="Menu_Click" Tag="Face"/>
+
                 <RadioButton Content="🎨 Stable Diffusion (Coming Soon)" Style="{StaticResource MenuButtonStyle}" 
                              IsEnabled="False" Opacity="0.5"/>
             </StackPanel>
