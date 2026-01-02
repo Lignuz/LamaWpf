@@ -1,10 +1,10 @@
 ﻿using OnnxEngines.Upscaling;
+using OnnxEngines.Utils;
 using Microsoft.Win32;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
-using OnnxEngines.Utils;
 
 namespace WpfAiRunner.Views;
 
@@ -12,8 +12,6 @@ public partial class RealEsrganView : UserControl, IDisposable
 {
     private readonly RealEsrganEngine _engine = new();
     private byte[]? _inputBytes;
-
-    // 현재 로드된 모델 경로 저장 (재로딩용)
     private string? _currentModelPath;
 
     public RealEsrganView() => InitializeComponent();
@@ -34,7 +32,6 @@ public partial class RealEsrganView : UserControl, IDisposable
 #endif
     }
 
-    // 1. 모델 로드 버튼
     private async void BtnLoadModel_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new OpenFileDialog { Filter = "ONNX Model|*.onnx" };
@@ -44,40 +41,36 @@ public partial class RealEsrganView : UserControl, IDisposable
         await ReloadModel();
     }
 
-    // 2. GPU 체크박스 토글 (자동 재로딩)
     private async void ChkUseGpu_Click(object sender, RoutedEventArgs e)
     {
-        // 모델이 로드된 적이 없다면 아무것도 안 함
         if (string.IsNullOrEmpty(_currentModelPath)) return;
-
-        // 모델 다시 읽기
         await ReloadModel();
     }
 
-    // [공통] 모델 로드 로직
     private async Task ReloadModel()
     {
         if (string.IsNullOrEmpty(_currentModelPath)) return;
 
-        SetBusy(true, "Loading Model...");
+        SetBusy(true, "Loading Model..."); // 여기서는 Indeterminate(뱅글뱅글) 모드
         try
         {
             bool useGpu = ChkUseGpu.IsChecked == true;
-
-            // UI 스레드 멈춤 방지를 위해 Task.Run 사용
             await Task.Run(() => _engine.LoadModel(_currentModelPath, useGpu));
 
             TxtStatus.Text = $"Model Loaded ({_engine.DeviceMode})";
-            BtnOpenImage.IsEnabled = true;
+            if (useGpu && _engine.DeviceMode.Contains("CPU"))
+            {
+                ChkUseGpu.IsChecked = false;
+            }
 
-            // 만약 이미지가 열려있다면 업스케일 버튼 활성화
+            BtnOpenImage.IsEnabled = true;
             if (_inputBytes != null) BtnUpscale.IsEnabled = true;
         }
         catch (Exception ex)
         {
             MessageBox.Show($"Error loading model: {ex.Message}");
             TxtStatus.Text = "Load Failed";
-            _currentModelPath = null; // 실패 시 경로 초기화
+            _currentModelPath = null;
         }
         finally
         {
@@ -85,7 +78,6 @@ public partial class RealEsrganView : UserControl, IDisposable
         }
     }
 
-    // 3. 이미지 열기
     private void BtnOpenImage_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new OpenFileDialog { Filter = "Images|*.png;*.jpg;*.jpeg" };
@@ -101,23 +93,24 @@ public partial class RealEsrganView : UserControl, IDisposable
         _inputBytes = ms.ToArray();
 
         BtnUpscale.IsEnabled = true;
-        BtnSave.IsEnabled = false; // 새 이미지를 열면 저장 버튼 비활성
+        BtnSave.IsEnabled = false;
         ImgOutput.Source = null;
         TxtStatus.Text = "Image Loaded.";
     }
 
-    // 4. 업스케일 실행
     private async void BtnUpscale_Click(object sender, RoutedEventArgs e)
     {
         if (_inputBytes == null) return;
 
         SetBusy(true, "Upscaling... 0%");
-        PbarUpscale.Visibility = Visibility.Visible;
-        PbarUpscale.Value = 0;
+
+        // 작업 모드로 전환: 퍼센트 표시를 위해 Indeterminate 끄기
+        PbarStatus.IsIndeterminate = false;
+        PbarStatus.Value = 0;
 
         var progress = new Progress<double>(p =>
         {
-            PbarUpscale.Value = p * 100;
+            PbarStatus.Value = p * 100;
             TxtStatus.Text = $"Upscaling... {(int)(p * 100)}%";
         });
 
@@ -134,7 +127,7 @@ public partial class RealEsrganView : UserControl, IDisposable
             resultBmp.Freeze();
 
             ImgOutput.Source = resultBmp;
-            BtnSave.IsEnabled = true; // 완료 후 저장 버튼 활성화
+            BtnSave.IsEnabled = true;
             TxtStatus.Text = "Done.";
         }
         catch (Exception ex)
@@ -145,11 +138,9 @@ public partial class RealEsrganView : UserControl, IDisposable
         finally
         {
             SetBusy(false);
-            PbarUpscale.Visibility = Visibility.Hidden;
         }
     }
 
-    // 5. 저장 기능
     private void BtnSave_Click(object sender, RoutedEventArgs e)
     {
         if (ImgOutput.Source is not BitmapSource resultBmp) return;
@@ -163,21 +154,25 @@ public partial class RealEsrganView : UserControl, IDisposable
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(resultBmp));
             encoder.Save(fileStream);
-            MessageBox.Show("Image saved successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Saved!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to save: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"Failed to save: {ex.Message}");
         }
     }
 
-    // 6. UI 잠금 헬퍼
     private void SetBusy(bool busy, string? statusMsg = null)
     {
-        // 작업 중에는 모든 입력 컨트롤 비활성화
+        PbarStatus.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+
+        // 기본값은 Indeterminate (로딩용)
+        // Upscale 버튼 클릭 시에만 수동으로 false로 바꿉니다.
+        if (busy) PbarStatus.IsIndeterminate = true;
+
         BtnLoadModel.IsEnabled = !busy;
         ChkUseGpu.IsEnabled = !busy;
-        BtnOpenImage.IsEnabled = !busy && !string.IsNullOrEmpty(_currentModelPath); // 모델 없으면 안 켜짐
+        BtnOpenImage.IsEnabled = !busy && !string.IsNullOrEmpty(_currentModelPath);
         BtnUpscale.IsEnabled = !busy && _inputBytes != null && !string.IsNullOrEmpty(_currentModelPath);
         BtnSave.IsEnabled = !busy && ImgOutput.Source != null;
 

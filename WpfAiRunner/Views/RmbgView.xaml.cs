@@ -188,11 +188,17 @@ public partial class RmbgView : UserControl, IDisposable
     // 6. UI 상태 제어
     private void SetBusy(bool busy, string? statusMsg = null)
     {
+        PbarLoading.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+
         BtnLoadModel.IsEnabled = !busy;
         ChkUseGpu.IsEnabled = !busy;
         BtnOpenImage.IsEnabled = !busy && !string.IsNullOrEmpty(_currentModelPath);
         BtnRun.IsEnabled = !busy && _inputBytes != null && !string.IsNullOrEmpty(_currentModelPath);
         BtnSave.IsEnabled = !busy && ImgOutput.Source != null;
+
+        // 슬라이더 등도 잠그고 싶다면 추가
+        SldThreshold.IsEnabled = !busy;
+        CboBackground.IsEnabled = !busy;
 
         if (statusMsg != null)
         {

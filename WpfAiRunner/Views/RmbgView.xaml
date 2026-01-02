@@ -19,9 +19,7 @@
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
                     <Button x:Name="BtnLoadModel" Content="📂 Load RMBG-1.4" Click="BtnLoadModel_Click"/>
                     <CheckBox x:Name="ChkUseGpu" Content="Use GPU" Click="ChkUseGpu_Click"/>
-
                     <Button x:Name="BtnOpenImage" Content="🖼️ Open Image" IsEnabled="False" Click="BtnOpenImage_Click"/>
-
                     <Button x:Name="BtnRun" Content="✨ Run" Style="{StaticResource BtnPrimary}" IsEnabled="False" Click="BtnRun_Click" Width="80"/>
                     <Button x:Name="BtnSave" Content="💾 Save" IsEnabled="False" Click="BtnSave_Click"/>
                 </StackPanel>
@@ -40,7 +38,11 @@
                     </ComboBox>
                 </StackPanel>
 
-                <TextBlock x:Name="TxtStatus" Text="Ready" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{StaticResource TextSecondary}"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <ProgressBar x:Name="PbarLoading" Width="100" Height="4" IsIndeterminate="True" 
+                     Visibility="Collapsed" Margin="0,0,10,0"/>
+                    <TextBlock x:Name="TxtStatus" Text="Ready" VerticalAlignment="Center" Foreground="{StaticResource TextSecondary}"/>
+                </StackPanel>
             </DockPanel>
         </Border>
 
