@@ -7,6 +7,7 @@ This project demonstrates a production-ready implementation of **LaMa (Inpaintin
 
 ### Architecture & Performance
 - **Modular Multi-Model UI**: Features a sidebar menu to switch between different model views dynamically.
+- **Unified AI Core**: All model inference logic is consolidated into a single `OnnxEngines` library, sharing optimized tensor processing and GPU session management utilities.
 - **Hybrid Execution**: Supports both **CPU** and **GPU (CUDA)** with a run-time toggle switch.
 - **Smart Fallback**: Automatically falls back to CPU if GPU initialization fails.
 - **Optimization**: Includes **GPU Warm-up** logic to eliminate initial inference latency and async processing to prevent UI freezing.
@@ -75,11 +76,13 @@ This project requires several large ONNX models. A PowerShell script is provided
 ## 📂 Project Structure
 
 - **WpfAiRunner** (UI): Handles main window, view switching (`Views/`), and user interaction.
-- **LamaEngine** (Library): Logic for LaMa Inpainting (Preprocessing, Inference, Postprocessing).
-- **DepthEngine** (Library): Logic for Depth Anything V2 estimation.
-- **SamEngine** (Library): Unified logic for both **MobileSAM** and **SAM 2** (Encoder-Decoder pipeline).
-- **UpscalingEngine** (Library): Logic for Real-ESRGAN Super Resolution (Tiling, Inference, Overlap merging).
-- **RmbgEngine** (Library): Logic for RMBG-1.4 Background Removal (Inference, Masking, Alpha Blending).
+- **OnnxEngines** (Core Library): A unified class library containing logic for all AI models.
+  - **Utils/**: Shared utilities for Tensor conversion (`TensorHelper`) and ONNX session management (`OnnxHelper`).
+  - **Lama/**: Logic for LaMa Inpainting.
+  - **Depth/**: Logic for Depth Anything V2.
+  - **Sam/**: Logic for MobileSAM & SAM 2.
+  - **Upscaling/**: Logic for Real-ESRGAN.
+  - **Rmbg/**: Logic for RMBG-1.4 Background Removal.
 
 ## ⚖️ License & Acknowledgements
 
