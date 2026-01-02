@@ -7,6 +7,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Microsoft.Win32;
 using OnnxEngines.Sam;
+using OnnxEngines.Utils;
 using SamEngine;
 using Path = System.IO.Path;
 
@@ -14,40 +15,84 @@ namespace WpfAiRunner.Views;
 
 public partial class SamView : UserControl, IDisposable
 {
-    // 인터페이스 타입으로 선언 (동적 할당)
     private ISamSegmenter _segmenter;
-    private BitmapSource? _inputBitmap;   // DPI 정규화된 입력 이미지
+    private BitmapSource? _inputBitmap;
     private bool _isModelLoaded;
     private bool _isImageEncoded;
-    private Point? _lastClickRatio;       // 오버레이 표시용 상대 좌표
-
-    // 콤보박스 업데이트 중인지 체크하는 플래그
+    private Point? _lastClickRatio;
     private bool _isUpdatingCombo;
 
-    // 재로딩을 위해 현재 로드된 모델 경로 기억
     private string? _currentEncoderPath;
     private string? _currentDecoderPath;
 
     public SamView()
     {
         InitializeComponent();
-        // 기본값은 SAM 2로 설정 (초기화)
-        _segmenter = new Sam2Segmenter();
+        _segmenter = new Sam2Segmenter(); // 기본값 SAM 2
     }
 
     public void Dispose() => _segmenter?.Dispose();
 
-    private void UserControl_Loaded(object sender, RoutedEventArgs e) { }
+    // 1. 화면 로드 시: 현재 선택된 모드(SAM 2)에 맞춰 자동 로드 시도
+    private async void UserControl_Loaded(object sender, RoutedEventArgs e)
+    {
+        await AutoLoadModelForCurrentType();
+    }
+
+    // 2. 콤보박스 변경 시: 해당 모드로 엔진 교체 후 자동 로드 시도
+    private async void CboModelType_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // 아직 UI 초기화 중이라면 스킵
+        if (!IsLoaded) return;
+
+        await AutoLoadModelForCurrentType();
+    }
+
+    // 현재 선택된 모드에 따라 엔진을 교체하고, Debug 모델을 찾아 로드하는 공통 함수
+    private async Task AutoLoadModelForCurrentType()
+    {
+        int index = CboModelType.SelectedIndex;
+
+        // 1. 엔진 인스턴스 교체
+        _segmenter.Dispose();
+        if (index == 0) _segmenter = new SamSegmenter();       // MobileSAM
+        else _segmenter = new Sam2Segmenter();      // SAM 2
+
+        // UI 상태 초기화 (모델 바뀜 -> 기존 이미지 인코딩 무효화)
+        _isModelLoaded = false;
+        _isImageEncoded = false;
+        TxtStatus.Text = "Model changed. Please load weights.";
+
+        // 2. 디버그 모드라면 자동 파일 찾기 시도
+#if DEBUG
+        string? encoder = null;
+        string? decoder = null;
+
+        if (index == 0) // MobileSAM
+        {
+            encoder = OnnxHelper.FindModelInDebug("mobile_sam.encoder.onnx");
+            decoder = OnnxHelper.FindModelInDebug("mobile_sam.decoder.onnx");
+        }
+        else // SAM 2
+        {
+            encoder = OnnxHelper.FindModelInDebug("sam2_hiera_small.encoder.onnx");
+            decoder = OnnxHelper.FindModelInDebug("sam2_hiera_small.decoder.onnx");
+        }
+
+        // 파일이 둘 다 있으면 바로 로딩
+        if (encoder != null && decoder != null)
+        {
+            await LoadModelsInternal(encoder, decoder);
+        }
+#endif
+    }
 
     private async void BtnLoadModels_Click(object sender, RoutedEventArgs e)
     {
-        // 1. 현재 선택된 모델 타입 확인
-        int modelTypeIndex = CboModelType.SelectedIndex; // 0: MobileSAM, 1: SAM 2
+        int modelTypeIndex = CboModelType.SelectedIndex;	// 0: MobileSAM, 1: SAM 2
 
-        // 2. 엔진 교체 (경로 선택 전에 미리 인스턴스 준비)
-        // 기존 세그멘터 정리
+        // 혹시 모르니 엔진 한번 더 확실히 리셋
         _segmenter.Dispose();
-
         if (modelTypeIndex == 0) _segmenter = new SamSegmenter();
         else _segmenter = new Sam2Segmenter();
 
@@ -58,13 +103,11 @@ public partial class SamView : UserControl, IDisposable
         string folder = Path.GetDirectoryName(encoderPath)!;
         string encoderNameLower = Path.GetFileName(encoderPath).ToLower();
 
-        // 3. 디코더 자동 찾기 로직 (엄격한 구분 적용)
         string? decoderPath = null;
         var allDecoders = Directory.GetFiles(folder, "*decoder*.onnx");
 
-        if (modelTypeIndex == 1) // [SAM 2 모드]
+        if (modelTypeIndex == 1) // SAM 2
         {
-            // (1) 같은 변종(tiny, small 등)을 가진 SAM 2 디코더 우선 검색
             string[] variants = { "tiny", "small", "base_plus", "large" };
             string? detectedVariant = variants.FirstOrDefault(v => encoderNameLower.Contains(v));
 
@@ -72,34 +115,26 @@ public partial class SamView : UserControl, IDisposable
             {
                 decoderPath = allDecoders.FirstOrDefault(f =>
                     Path.GetFileName(f).ToLower().Contains(detectedVariant) &&
-                    Path.GetFileName(f).ToLower().Contains("sam2")); // sam2 키워드 필수
+                    Path.GetFileName(f).ToLower().Contains("sam2"));
             }
-
-            // (2) 없으면 'sam2'나 'hiera'가 들어간 아무 디코더 검색
             decoderPath ??= allDecoders.FirstOrDefault(f =>
             {
                 string name = Path.GetFileName(f).ToLower();
                 return name.Contains("sam2") || name.Contains("hiera");
             });
         }
-        else // [MobileSAM 모드]
+        else // MobileSAM
         {
-            // (1) 'mobile_sam'이 들어간 디코더 우선 검색
             decoderPath = allDecoders.FirstOrDefault(f => Path.GetFileName(f).ToLower().Contains("mobile"));
-
-            // (2) 없으면 일반 디코더를 찾되, **SAM 2용 파일은 제외**
             decoderPath ??= allDecoders.FirstOrDefault(f =>
             {
                 string name = Path.GetFileName(f).ToLower();
-                // [핵심] SAM 2 전용 키워드가 없는 파일만 선택
                 return !name.Contains("sam2") && !name.Contains("hiera");
             });
         }
 
-        // 4. 그래도 못 찾았으면 인코더 경로를 임시로 넣어서 아래 확인창 띄움
         decoderPath ??= encoderPath;
 
-        // 5. 사용자 확인 (자동 선택된 것이 맞는지)
         if (decoderPath == encoderPath ||
             MessageBox.Show($"Use decoder: {Path.GetFileName(decoderPath)}?", "Confirm", MessageBoxButton.YesNo) == MessageBoxResult.No)
         {
@@ -108,7 +143,6 @@ public partial class SamView : UserControl, IDisposable
             decoderPath = dlg2.FileName;
         }
 
-        // 공통 로딩 함수 호출
         await LoadModelsInternal(encoderPath, decoderPath);
     }
 
@@ -137,17 +171,17 @@ public partial class SamView : UserControl, IDisposable
             _currentDecoderPath = decoderPath;
             _isModelLoaded = true;
 
-            TxtStatus.Text = $"{CboModelType.Text} Loaded ({_segmenter.DeviceMode})";
+            TxtStatus.Text = $"{((ComboBoxItem)CboModelType.SelectedItem).Content} Loaded ({_segmenter.DeviceMode})";
             BtnOpenImage.IsEnabled = true;
 
             // GPU 실패 시 UI 동기화 (Fallback 알림)
             if (useGpu && _segmenter.DeviceMode.Contains("CPU"))
             {
                 ChkUseGpu.IsChecked = false;
-                MessageBox.Show("GPU init failed. Fallback to CPU.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("GPU init failed. Fallback to CPU.", "Info");
             }
 
-            // 이미 이미지가 열려있다면, 인코더(디바이스)가 바뀌었으므로 다시 인코딩해야 함
+            // 이미지가 있으면 재인코딩
             if (_inputBitmap != null)
             {
                 await EncodeCurrentInput();
@@ -155,9 +189,8 @@ public partial class SamView : UserControl, IDisposable
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error loading models:\n{ex.Message}\n\nCheck if you selected the correct model files.");
+            MessageBox.Show($"Error loading models:\n{ex.Message}");
             _isModelLoaded = false;
-            // 실패 시 경로 초기화
             _currentEncoderPath = null;
             _currentDecoderPath = null;
         }
@@ -184,7 +217,6 @@ public partial class SamView : UserControl, IDisposable
 
         // 2. DPI 정규화 (좌표 계산 및 마스크 정합성 확보를 위해 필수)
         _inputBitmap = NormalizeDpi96(bmp);
-
         ImgInput.Source = _inputBitmap;
         ImgMask.Source = null;
         PointOverlay.Children.Clear();
@@ -414,10 +446,10 @@ public partial class SamView : UserControl, IDisposable
     {
         PbarLoading.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         BtnLoadModels.IsEnabled = !busy;
-        ChkUseGpu.IsEnabled = !busy; // 로딩 중 클릭 방지
+        ChkUseGpu.IsEnabled = !busy;
         BtnOpenImage.IsEnabled = !busy && _isModelLoaded;
         BtnReset.IsEnabled = !busy && _isModelLoaded;
-        ImgInput.IsEnabled = !busy; // 처리 중 클릭 방지
+        ImgInput.IsEnabled = !busy;
 
         if (msg != null) TxtStatus.Text = msg;
     }

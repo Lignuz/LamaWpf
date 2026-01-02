@@ -7,6 +7,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Microsoft.Win32;
 using OnnxEngines.Lama;
+using OnnxEngines.Utils;
 
 namespace WpfAiRunner.Views;
 
@@ -45,7 +46,7 @@ public partial class LamaView : UserControl, IDisposable
         _inpainter?.Dispose();
     }
 
-    private void UserControl_Loaded(object sender, RoutedEventArgs e)
+    private async void UserControl_Loaded(object sender, RoutedEventArgs e)
     {
         rbRect.Checked += MaskMode_Checked;
         rbBrush.Checked += MaskMode_Checked;
@@ -59,6 +60,17 @@ public partial class LamaView : UserControl, IDisposable
         UpdateBrushUi();
         UpdateButtons();
         SetStatus("Ready.");
+
+#if DEBUG
+        if (_inpainter == null && string.IsNullOrEmpty(_modelPath))
+        {
+            string? debugPath = OnnxHelper.FindModelInDebug("lama_fp32.onnx");
+            if (debugPath != null)
+            {
+                await ReloadModelAsync(debugPath);
+            }
+        }
+#endif
     }
 
     private async void ChkUseGpu_Click(object sender, RoutedEventArgs e)

@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
+using OnnxEngines.Utils;
 
 namespace WpfAiRunner.Views;
 
@@ -17,6 +18,21 @@ public partial class RealEsrganView : UserControl, IDisposable
 
     public RealEsrganView() => InitializeComponent();
     public void Dispose() => _engine.Dispose();
+
+    private async void UserControl_Loaded(object sender, RoutedEventArgs e)
+    {
+#if DEBUG
+        if (string.IsNullOrEmpty(_currentModelPath))
+        {
+            string? debugPath = OnnxHelper.FindModelInDebug("Real-ESRGAN-x4plus.onnx");
+            if (debugPath != null)
+            {
+                _currentModelPath = debugPath;
+                await ReloadModel();
+            }
+        }
+#endif
+    }
 
     // 1. 모델 로드 버튼
     private async void BtnLoadModel_Click(object sender, RoutedEventArgs e)

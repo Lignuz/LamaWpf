@@ -90,8 +90,8 @@ function Download-FileWithProgress {
 $models = @(
     @{ Name = "lama_fp32.onnx";                   Url = "https://huggingface.co/Carve/LaMa-ONNX/resolve/main/lama_fp32.onnx?download=true" },
     @{ Name = "depth_anything_v2_small.onnx";     Url = "https://huggingface.co/onnx-community/depth-anything-v2-small/resolve/main/onnx/model.onnx?download=true" },
-    @{ Name = "mobile_sam_image_encoder.onnx";    Url = "https://huggingface.co/Acly/MobileSAM/resolve/main/mobile_sam_image_encoder.onnx?download=true" },
-    @{ Name = "sam_mask_decoder_multi.onnx";      Url = "https://huggingface.co/Acly/MobileSAM/resolve/main/sam_mask_decoder_multi.onnx?download=true" },
+    @{ Name = "mobile_sam.encoder.onnx";          Url = "https://huggingface.co/Acly/MobileSAM/resolve/main/mobile_sam_image_encoder.onnx?download=true" },
+    @{ Name = "mobile_sam.decoder.onnx";          Url = "https://huggingface.co/Acly/MobileSAM/resolve/main/sam_mask_decoder_multi.onnx?download=true" },
     @{ Name = "sam2_hiera_small.encoder.onnx";    Url = "https://huggingface.co/vietanhdev/segment-anything-2-onnx-models/resolve/main/sam2_hiera_small.encoder.onnx?download=true" },
     @{ Name = "sam2_hiera_small.decoder.onnx";    Url = "https://huggingface.co/vietanhdev/segment-anything-2-onnx-models/resolve/main/sam2_hiera_small.decoder.onnx?download=true" },
     @{ Name = "Real-ESRGAN-x4plus.onnx";          Url = "https://huggingface.co/qualcomm/Real-ESRGAN-x4plus/resolve/83db0da6e1b4969f85fe60ee713bd2c2b3160c23/Real-ESRGAN-x4plus.onnx?download=true" },

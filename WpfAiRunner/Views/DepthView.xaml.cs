@@ -22,9 +22,20 @@ public partial class DepthView : UserControl, IDisposable
 
     public void Dispose() => _estimator?.Dispose();
 
-    private void UserControl_Loaded(object sender, RoutedEventArgs e)
+    private async void UserControl_Loaded(object sender, RoutedEventArgs e)
     {
         UpdateButtons();
+
+#if DEBUG
+        if (_estimator == null && string.IsNullOrEmpty(_modelPath))
+        {
+            string? debugPath = OnnxHelper.FindModelInDebug("depth_anything_v2_small.onnx");
+            if (debugPath != null)
+            {
+                await ReloadModelAsync(debugPath);
+            }
+        }
+#endif
     }
 
     // 1. 모델 선택 버튼

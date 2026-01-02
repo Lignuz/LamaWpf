@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using OnnxEngines.Rmbg;
+using OnnxEngines.Utils;
 using SixLabors.ImageSharp.PixelFormats;
 using System.IO;
 using System.Windows;
@@ -18,6 +19,21 @@ public partial class RmbgView : UserControl, IDisposable
 
     public RmbgView() => InitializeComponent();
     public void Dispose() => _engine.Dispose();
+
+    private async void UserControl_Loaded(object sender, RoutedEventArgs e)
+    {
+#if DEBUG
+        if (string.IsNullOrEmpty(_currentModelPath))
+        {
+            string? debugPath = OnnxHelper.FindModelInDebug("rmbg-1.4.onnx");
+            if (debugPath != null)
+            {
+                _currentModelPath = debugPath;
+                await ReloadModel();
+            }
+        }
+#endif
+    }
 
     // 1. 모델 로드 버튼
     private async void BtnLoadModel_Click(object sender, RoutedEventArgs e)
