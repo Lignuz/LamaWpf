@@ -37,6 +37,7 @@ public partial class MainWindow : Window
                 "Color" => new Views.ColorizationView(),
                 "StableDiffusion" => new Views.SdView(),
                 "OCR" => new Views.OcrView(),
+                "Translate" => new Views.TranslateView(),
                 _ => new Views.WelcomeView()
             };
         }

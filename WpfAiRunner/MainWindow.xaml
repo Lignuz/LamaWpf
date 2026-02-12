@@ -72,8 +72,11 @@
                 <RadioButton Content="✨ Stable Diffusion" Style="{StaticResource MenuButtonStyle}" 
                             Click="Menu_Click" Tag="StableDiffusion"/>
 
-                <RadioButton Content="📝OCR" Style="{StaticResource MenuButtonStyle}" 
+                <RadioButton Content="📝 OCR" Style="{StaticResource MenuButtonStyle}" 
                             Click="Menu_Click" Tag="OCR"/>
+
+                <RadioButton Content="📝 Translate" Style="{StaticResource MenuButtonStyle}" 
+                            Click="Menu_Click" Tag="Translate"/>
             </StackPanel>
         </Border>
 

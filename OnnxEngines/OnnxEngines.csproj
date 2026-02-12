@@ -10,6 +10,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<PackageReference Include="GTranslate" Version="2.3.1" />
 		<PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.23.0" />
 		<PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260211" />
 		<PackageReference Include="Sdcb.Paddle2Onnx.runtime.win64" Version="1.0.0.2" />
