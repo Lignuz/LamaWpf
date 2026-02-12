@@ -3,35 +3,38 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:WpfAiRunner.Views"
              Background="{StaticResource BgDark}">
-
-    <Grid Margin="15">
+    
+    <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Background="{StaticResource BgCard}" CornerRadius="8" Padding="10" Margin="0,0,0,15">
+        <Border Grid.Row="0" Style="{StaticResource TranslateCardStyle}" Padding="10" Margin="0,0,0,20">
             <DockPanel>
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="Source:" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource TextSecondary}"/>
-                    <ComboBox x:Name="CboSourceLang" Width="120" Margin="0,0,20,0" SelectedIndex="0">
+                    <ComboBox x:Name="CboSourceLang" Width="120" SelectedIndex="0">
                         <ComboBoxItem Content="Auto Detect"/>
                         <ComboBoxItem Content="Korean"/>
                         <ComboBoxItem Content="English"/>
+                        <ComboBoxItem Content="Japanese"/>
                     </ComboBox>
 
-                    <TextBlock Text="Target:" VerticalAlignment="Center" Margin="0,0,5,0" Foreground="{StaticResource TextSecondary}"/>
+                    <Button x:Name="BtnSwap" Content="⇄" Style="{StaticResource TranslateIconBtnStyle}" 
+                            Width="40" Height="32" FontSize="18" Margin="10,0" Click="BtnSwap_Click"/>
+
                     <ComboBox x:Name="CboTargetLang" Width="120" Margin="0,0,20,0" SelectedIndex="1">
                         <ComboBoxItem Content="Korean"/>
                         <ComboBoxItem Content="English"/>
+                        <ComboBoxItem Content="Japanese"/>
                     </ComboBox>
 
-                    <Button x:Name="BtnTranslate" Content="🌐 Translate Now" Style="{StaticResource BtnPrimary}" Click="BtnTranslate_Click" Width="140"/>
+                    <Button x:Name="BtnTranslate" Content="🌐 번역하기" Style="{StaticResource BtnPrimary}" Click="BtnTranslate_Click"/>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <ProgressBar x:Name="PbarLoading" Width="100" Height="4" IsIndeterminate="True" Visibility="Collapsed" Margin="0,0,10,0"/>
-                    <TextBlock x:Name="TxtStatus" Text="Ready" VerticalAlignment="Center" Foreground="{StaticResource TextSecondary}"/>
+                    <ProgressBar x:Name="PbarLoading" Width="100" Height="4" IsIndeterminate="True" Visibility="Collapsed" Margin="0,0,15,0"/>
+                    <TextBlock x:Name="TxtStatus" Text="준비 완료" VerticalAlignment="Center" Foreground="{StaticResource TextSecondary}"/>
                 </StackPanel>
             </DockPanel>
         </Border>
@@ -42,22 +45,24 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="{StaticResource BgCard}" CornerRadius="8" Margin="0,0,8,0" BorderThickness="1">
+            <Border Grid.Column="0" Style="{StaticResource TranslateCardStyle}" Margin="0,0,10,0">
                 <Grid>
-                    <TextBox x:Name="TxtInput" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                             Background="Transparent" Foreground="{StaticResource TextPrimary}" BorderThickness="0" 
-                             Padding="15" FontSize="14" Opacity="0.9"/>
-                    <Button Content="Clear" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="5" Click="BtnClear_Click" Opacity="0.5" />
+                    <TextBox x:Name="TxtInput" Background="Transparent" Foreground="{StaticResource TextPrimary}" 
+                             BorderThickness="0" Padding="15" FontSize="14" AcceptsReturn="True" TextWrapping="Wrap"/>
+                    <Button Content="✕" Style="{StaticResource TranslateIconBtnStyle}" 
+                            VerticalAlignment="Top" HorizontalAlignment="Right" Margin="5" 
+                            Width="24" Height="24" Click="BtnClear_Click"/>
                 </Grid>
             </Border>
 
-            <Border Grid.Column="1" Background="{StaticResource BgCard}" CornerRadius="8" Margin="8,0,0,0" BorderThickness="0,0,0,3">
+            <Border Grid.Column="1" Style="{StaticResource TranslateCardStyle}" Margin="10,0,0,0" BorderBrush="{StaticResource AccentColor}">
                 <Grid>
-                    <TextBox x:Name="TxtOutput" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                             Background="Transparent" Foreground="{StaticResource TextPrimary}" BorderThickness="0" 
-                             Padding="15" FontSize="14"/>
-                    <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Right" Orientation="Horizontal" Margin="10">
-                        <Button Content="📋 Copy" Click="BtnCopy_Click" Margin="5,0" Opacity="0.8"/>
+                    <TextBox x:Name="TxtOutput" IsReadOnly="True" Background="Transparent" 
+                             Foreground="{StaticResource TextPrimary}" BorderThickness="0" 
+                             Padding="15" FontSize="14" AcceptsReturn="True" TextWrapping="Wrap"/>
+                    <StackPanel VerticalAlignment="Bottom" HorizontalAlignment="Right" Orientation="Horizontal" Margin="15">
+                        <Button Content="⬆ 보내기" Click="BtnMoveToInput_Click" ToolTip="결과를 입력창으로 가져오기" Padding="12,8" Style="{StaticResource TranslateIconBtnStyle}" Background="#1AFFFFFF" Margin="0,0,8,0"/>
+                        <Button Content="📋 복사" Click="BtnCopy_Click" Padding="12,8" Style="{StaticResource TranslateIconBtnStyle}" Background="#1AFFFFFF"/>
                     </StackPanel>
                 </Grid>
             </Border>
