@@ -2,6 +2,7 @@
 using Microsoft.ML.OnnxRuntime.Tensors;
 using SkiaSharp;
 using OnnxEngines.Utils;
+using OpenCvSharp;
 
 namespace OnnxEngines.Depth;
 
@@ -12,11 +13,14 @@ public class DepthEstimator : BaseOnnxEngine
     private Tensor<float>? _lastOutputTensor;
     private int _lastOrigW, _lastOrigH;
 
+    private Mat? _lastInputMat;
+    private Mat? _lastDepthMat;
+
     public DepthEstimator(string modelPath, bool useGpu = false) : base(modelPath, useGpu) { }
 
     protected override void OnWarmup()
     {
-        if (_session == null) return; // 안전장치
+        if (_session == null) return;
 
         try
         {
@@ -24,39 +28,45 @@ public class DepthEstimator : BaseOnnxEngine
             string inputName = _session.InputMetadata.Keys.First();
             using var results = _session.Run(new[] { NamedOnnxValue.CreateFromTensor(inputName, dummyTensor) });
         }
-        catch {}
+        catch { }
     }
 
-    // 1단계: 추론만 수행
+    // 1단계: 추론 수행 및 데이터 캡처
     public void RunInference(byte[] imageBytes)
     {
         if (_session == null) throw new System.InvalidOperationException("Model not loaded.");
 
+        // SkiaSharp 기반 이미지 로드
         using var src = SKBitmap.Decode(imageBytes).Copy(SKColorType.Rgba8888);
         _lastOrigW = src.Width;
         _lastOrigH = src.Height;
 
-        // TensorHelper 사용
+        // TensorHelper를 이용한 전처리
         var inputTensor = src.ToTensor(ModelSize, ModelSize);
 
-        var inputs = new List<NamedOnnxValue>
-        {
-            NamedOnnxValue.CreateFromTensor("image", inputTensor)
-        };
+        // 리포커싱용 Mat 데이터 보관
+        _lastInputMat?.Dispose();
+        _lastInputMat = Cv2.ImDecode(imageBytes, ImreadModes.Color);
 
-        if (_session.InputMetadata.Count > 0)
-        {
-            string inputName = _session.InputMetadata.Keys.First();
-            inputs[0] = NamedOnnxValue.CreateFromTensor(inputName, inputTensor);
-        }
+        var inputs = new List<NamedOnnxValue>();
+        string inputName = _session.InputMetadata.Keys.First();
+        inputs.Add(NamedOnnxValue.CreateFromTensor(inputName, inputTensor));
 
         using var results = _session.Run(inputs);
         var outputRaw = results.First().AsTensor<float>();
 
+        // 기존 방식의 텐서 캐싱
         _lastOutputTensor = outputRaw.ToDenseTensor();
+
+        // 리포커싱용 float Mat 데이터 생성
+        _lastDepthMat?.Dispose();
+        _lastDepthMat = new Mat(ModelSize, ModelSize, MatType.CV_32FC1);
+        for (int y = 0; y < ModelSize; y++)
+            for (int x = 0; x < ModelSize; x++)
+                _lastDepthMat.Set(y, x, _lastOutputTensor[0, y, x]);
     }
 
-    // 2단계: 저장된 결과로 스타일만 적용
+    // 2단계: 저장된 결과로 스타일 적용
     public byte[] GetDepthMap(ColormapStyle style)
     {
         if (_lastOutputTensor == null)
@@ -65,8 +75,7 @@ public class DepthEstimator : BaseOnnxEngine
         // 캐시된 텐서를 사용하여 이미지 생성
         using var outputImg = TensorToColorMap(_lastOutputTensor, ModelSize, ModelSize, style);
 
-        // 원본 크기 복원
-        // Skia의 Resize는 새 객체를 반환하므로 outputImg를 리사이즈한 결과를 저장
+        // SkiaSharp 기반 원본 크기 복원
         using var resizedImg = outputImg.Resize(new SKImageInfo(_lastOrigW, _lastOrigH), new SKSamplingOptions(SKCubicResampler.Mitchell));
         using var data = resizedImg.Encode(SKEncodedImageFormat.Png, 100);
         return data.ToArray();
@@ -106,7 +115,54 @@ public class DepthEstimator : BaseOnnxEngine
                 pixels[offset + 3] = 255;
             }
         }
-
         return img;
+    }
+
+    // 고성능 리포커싱 (실시간 업데이트 대응용)
+    public byte[] RenderRefocus(double relX, double relY, float blurStrength)
+    {
+        if (_lastInputMat == null || _lastDepthMat == null) return Array.Empty<byte>();
+
+        int fx = (int)Math.Clamp(relX * _lastDepthMat.Width, 0, _lastDepthMat.Width - 1);
+        int fy = (int)Math.Clamp(relY * _lastDepthMat.Height, 0, _lastDepthMat.Height - 1);
+        float focusDepth = _lastDepthMat.At<float>(fy, fx);
+
+        using var fullDepth = new Mat();
+        Cv2.Resize(_lastDepthMat, fullDepth, _lastInputMat.Size());
+
+        using var blurMat = new Mat();
+        int kSize = ((int)blurStrength * 4) + 1;
+        if (kSize <= 1) return _lastInputMat.ToBytes(".png");
+
+        Cv2.GaussianBlur(_lastInputMat, blurMat, new Size(kSize, kSize), 0);
+        using var result = new Mat(_lastInputMat.Size(), _lastInputMat.Type());
+
+        // 슬라이더 강도에 따른 감도 및 전이 부드러움 보정
+        float sensitivity = 0.2f + (blurStrength / 30f) * 0.4f;
+
+        for (int i = 0; i < result.Rows; i++)
+        {
+            for (int j = 0; j < result.Cols; j++)
+            {
+                float diff = Math.Abs(fullDepth.At<float>(i, j) - focusDepth);
+                float weight = Math.Min(diff * sensitivity, 1.0f);
+                weight = weight * weight; // 비선형 가중치로 경계면 최적화
+
+                var s = _lastInputMat.At<Vec3b>(i, j);
+                var b = blurMat.At<Vec3b>(i, j);
+                result.Set(i, j, new Vec3b(
+                    (byte)(s.Item0 * (1 - weight) + b.Item0 * weight),
+                    (byte)(s.Item1 * (1 - weight) + b.Item1 * weight),
+                    (byte)(s.Item2 * (1 - weight) + b.Item2 * weight)));
+            }
+        }
+        return result.ToBytes(".png");
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose(); // BaseOnnxEngine 자원 해제
+        _lastInputMat?.Dispose();
+        _lastDepthMat?.Dispose();
     }
 }

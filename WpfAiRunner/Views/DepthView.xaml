@@ -45,11 +45,38 @@
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" Style="{StaticResource CardBorder}">
-                <Image x:Name="ImgInput" Stretch="Uniform"/>
+                <Grid>
+                    <Image x:Name="ImgInput" Stretch="Uniform" 
+               MouseLeftButtonDown="ImgInput_MouseLeftButtonDown" 
+               SizeChanged="ImgInput_SizeChanged"
+               Cursor="Cross"/>
+
+                    <Canvas x:Name="CanvasOverlay" IsHitTestVisible="False"
+                Width="{Binding ActualWidth, ElementName=ImgInput}"
+                Height="{Binding ActualHeight, ElementName=ImgInput}"
+                HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Ellipse x:Name="FocusMarker" Width="20" Height="20" 
+                     Stroke="Yellow" StrokeThickness="2" Visibility="Collapsed"/>
+                    </Canvas>
+
+                    <Border VerticalAlignment="Bottom" Background="#AA000000" CornerRadius="0,0,8,8" Padding="15,8">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <TextBlock Text="Blur Intensity" VerticalAlignment="Center" Foreground="White" Margin="0,0,10,0" FontSize="11"/>
+                            <Slider x:Name="SldBlur" Width="150" Minimum="0" Maximum="30" Value="5" 
+                        VerticalAlignment="Center" ValueChanged="SldBlur_ValueChanged" />
+                            <TextBlock Text="{Binding Value, ElementName=SldBlur, StringFormat={}{0:N0}}" 
+                           Foreground="{StaticResource AccentColor}" VerticalAlignment="Center" Margin="8,0,0,0" Width="20"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
 
             <Border Grid.Column="2" Style="{StaticResource CardBorder}">
-                <Image x:Name="ImgOutput" Stretch="Uniform"/>
+                <Grid>
+                    <Image x:Name="ImgOutput" Stretch="Uniform"/>
+                    <Button x:Name="BtnResetFocus" Content="✕ Reset Focus" HorizontalAlignment="Right" VerticalAlignment="Top" 
+                    Margin="10" Click="BtnResetFocus_Click" Opacity="0.8"/>
+                </Grid>
             </Border>
         </Grid>
     </Grid>

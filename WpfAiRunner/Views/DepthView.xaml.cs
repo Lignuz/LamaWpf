@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.Win32;
 using OnnxEngines.Depth;
 using OnnxEngines.Utils;
@@ -17,6 +18,8 @@ public partial class DepthView : BaseAiView
     protected override Image? ControlImgOutput => ImgOutput;
     protected override ProgressBar? ControlPbarLoading => PbarLoading;
     protected override TextBlock? ControlTxtStatus => TxtStatus;
+
+    private Point? _lastClickPoint = null; // 마지막 클릭된 상대 좌표 저장
 
     public DepthView() => InitializeComponent();
     public override void Dispose() => _estimator?.Dispose();
@@ -66,7 +69,6 @@ public partial class DepthView : BaseAiView
         {
             bool useGpu = ChkUseGpu.IsChecked == true;
             _estimator?.Dispose();
-            _estimator = null;
 
             _estimator = await Task.Run(() => new DepthEstimator(path, useGpu));
             _modelPath = path;
@@ -142,12 +144,119 @@ public partial class DepthView : BaseAiView
             byte[] resultBytes = await Task.Run(() => _estimator.GetDepthMap(style));
             ImgOutput.Source = BytesToBitmap(resultBytes);
         }
-        catch (Exception ex)
+        catch (Exception ex) { Log($"Style failed: {ex.Message}"); }
+    }
+
+    private void ImgInput_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!_hasInferenceResult || _estimator == null || ImgInput.Source == null) return;
+
+        Point p = e.GetPosition(ImgInput);
+
+        // 실제 이미지 렌더링 영역 계산
+        double actualWidth = ImgInput.ActualWidth;
+        double actualHeight = ImgInput.ActualHeight;
+        double sourceWidth = ImgInput.Source.Width;
+        double sourceHeight = ImgInput.Source.Height;
+
+        double ratio = Math.Min(actualWidth / sourceWidth, actualHeight / sourceHeight);
+        double imgRenderWidth = sourceWidth * ratio;
+        double imgRenderHeight = sourceHeight * ratio;
+
+        double leftEdge = (actualWidth - imgRenderWidth) / 2;
+        double topEdge = (actualHeight - imgRenderHeight) / 2;
+
+        // 이미지 영역 내부 좌표 계산 (0.0 ~ 1.0)
+        double relX = (p.X - leftEdge) / imgRenderWidth;
+        double relY = (p.Y - topEdge) / imgRenderHeight;
+
+        // 이미지 밖을 클릭한 경우 무시
+        if (relX < 0 || relX > 1 || relY < 0 || relY > 1) return;
+
+        // 좌표 저장 및 마커 이동
+        _lastClickPoint = new Point(relX, relY);
+        UpdateFocusMarkerPosition(p);
+
+        ApplyRefocus(relX, relY);
+    }
+
+    // 노란색 마커 표시
+    private void UpdateFocusMarkerPosition(Point p)
+    {
+        FocusMarker.Visibility = Visibility.Visible;
+        Canvas.SetLeft(FocusMarker, p.X - (FocusMarker.Width / 2));
+        Canvas.SetTop(FocusMarker, p.Y - (FocusMarker.Height / 2));
+    }
+
+    // 슬라이더 변경 시 실시간 업데이트
+    private void SldBlur_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        // 이미 클릭된 좌표가 있고 추론 결과가 있을 때만 실시간 업데이트
+        if (_hasInferenceResult && _lastClickPoint.HasValue)
         {
-            System.Diagnostics.Debug.WriteLine($"Style update failed: {ex.Message}");
+            ApplyRefocus(_lastClickPoint.Value.X, _lastClickPoint.Value.Y);
         }
     }
 
+    // 창 크기가 바뀌어도 마커 위치를 유지하기 위한 로직
+    private void ImgInput_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // 1. 이미 분석 결과가 있고, 이전에 클릭한 좌표 정보가 있을 때만 실행
+        if (!_hasInferenceResult || _lastClickPoint == null || ImgInput.Source == null)
+        {
+            if (FocusMarker != null) FocusMarker.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        // 2. 바뀐 컨트롤 크기(ActualWidth/Height)를 기준으로 다시 여백과 렌더링 영역 계산
+        double actualWidth = ImgInput.ActualWidth;
+        double actualHeight = ImgInput.ActualHeight;
+        double sourceWidth = ImgInput.Source.Width;
+        double sourceHeight = ImgInput.Source.Height;
+
+        double ratio = Math.Min(actualWidth / sourceWidth, actualHeight / sourceHeight);
+        double imgRenderWidth = sourceWidth * ratio;
+        double imgRenderHeight = sourceHeight * ratio;
+
+        double leftEdge = (actualWidth - imgRenderWidth) / 2;
+        double topEdge = (actualHeight - imgRenderHeight) / 2;
+
+        // 3. 저장된 상대 좌표(_lastNormalizedPoint)를 이용해 현재의 절대 좌표 계산
+        double newX = leftEdge + (_lastClickPoint.Value.X * imgRenderWidth);
+        double newY = topEdge + (_lastClickPoint.Value.Y * imgRenderHeight);
+
+        // 4. 마커 위치 업데이트
+        Canvas.SetLeft(FocusMarker, newX - (FocusMarker.Width / 2));
+        Canvas.SetTop(FocusMarker, newY - (FocusMarker.Height / 2));
+        FocusMarker.Visibility = Visibility.Visible;
+    }
+
+    private async void ApplyRefocus(double relX, double relY)
+    {
+        if (_estimator == null) return;
+
+        // 실시간 업데이트 시 너무 잦은 로그와 Busy상태는 UX를 해치므로 로깅 제외
+        try
+        {
+            float blurStrength = (float)SldBlur.Value;
+            byte[]? result = await Task.Run(() => _estimator.RenderRefocus(relX, relY, blurStrength));
+
+            if (result != null && result.Length > 0)
+            {
+                ImgOutput.Source = BytesToBitmap(result);
+            }
+        }
+        catch (Exception ex) { Log($"Focus error: {ex.Message}"); }
+    }
+
+    // 리포커싱 취소 및 원래 결과(깊이 맵)로 복구
+    private async void BtnResetFocus_Click(object sender, RoutedEventArgs e)
+    {
+        FocusMarker.Visibility = Visibility.Collapsed;
+        await UpdateResultImage(); // 기존의 스타일 적용된 깊이 맵으로 복구
+        Log("Focus reset to original depth map.");
+    }
+   
     private void UpdateButtons()
     {
         bool busy = ControlPbarLoading?.Visibility == Visibility.Visible;
