@@ -205,6 +205,51 @@ public class DepthEstimator : BaseOnnxEngine
         return result.ToBytes(".png");
     }
 
+    // 안개 효과: 깊이 값에 비례하여 이미지에 흰색 안개를 중첩
+    public byte[] RenderFogEffect(float fogStrength)
+    {
+        if (_lastInputMat == null || _lastDepthMat == null) return Array.Empty<byte>();
+
+        using var fullDepth = new Mat();
+        Cv2.Resize(_lastDepthMat, fullDepth, _lastInputMat.Size());
+
+        fullDepth.MinMaxLoc(out double minVal, out double maxVal);
+        float range = (float)(maxVal - minVal);
+        if (range < 0.001f) range = 1.0f;
+
+        using var result = new Mat(_lastInputMat.Size(), _lastInputMat.Type());
+
+        float density = fogStrength / 30.0f;
+
+        for (int i = 0; i < result.Rows; i++)
+        {
+            for (int j = 0; j < result.Cols; j++)
+            {
+                float rawDepth = fullDepth.At<float>(i, j);
+                float normalizedDepth = (rawDepth - (float)minVal) / range;
+                float dist = 1.0f - normalizedDepth;
+
+                // 임계값(0.35) 이하의 전경은 안개를 0으로 완전 차단
+                float weight = 0;
+                if (dist > 0.35f)
+                {
+                    // 임계값을 넘는 배경에 대해서만 선형적으로 안개 적용
+                    weight = Math.Clamp((dist - 0.35f) * density * 2.0f, 0.0f, 1.0f);
+                }
+
+                var s = _lastInputMat.At<Vec3b>(i, j);
+
+                // 안개 색상 합성
+                byte b = (byte)Math.Clamp(s.Item0 * (1.0f - weight) + 255.0f * weight, 0, 255);
+                byte g = (byte)Math.Clamp(s.Item1 * (1.0f - weight) + 255.0f * weight, 0, 255);
+                byte r = (byte)Math.Clamp(s.Item2 * (1.0f - weight) + 255.0f * weight, 0, 255);
+
+                result.Set(i, j, new Vec3b(b, g, r));
+            }
+        }
+        return result.ToBytes(".png");
+    }
+
     public override void Dispose()
     {
         base.Dispose(); // BaseOnnxEngine 자원 해제

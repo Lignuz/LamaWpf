@@ -64,6 +64,7 @@
                             <ComboBox x:Name="CboEffectMode" Width="100" Margin="0,0,15,0" SelectedIndex="0" SelectionChanged="CboEffectMode_SelectionChanged">
                                 <ComboBoxItem Content="Blur (Focus)"/>
                                 <ComboBoxItem Content="B&amp;W (Isolation)"/>
+                                <ComboBoxItem Content="Fog (Depth)"/>
                             </ComboBox>
 
                             <TextBlock x:Name="TxtEffectLabel" Text="Intensity" VerticalAlignment="Center" Foreground="White" Margin="0,0,10,0" FontSize="11"/>

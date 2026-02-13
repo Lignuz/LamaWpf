@@ -189,10 +189,16 @@ public partial class DepthView : BaseAiView
     }
 
     // 슬라이더 변경 시 실시간 업데이트
+    // 안개 모드일 때는 클릭하지 않아도 슬라이더만으로 업데이트 가능
     private void SldBlur_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        // 이미 클릭된 좌표가 있고 추론 결과가 있을 때만 실시간 업데이트
-        if (_hasInferenceResult && _lastClickPoint.HasValue)
+        if (!_hasInferenceResult) return;
+
+        if (CboEffectMode.SelectedIndex == 2) // Fog 모드인 경우
+        {
+            ApplyRefocus(0, 0); // 좌표 상관없음
+        }
+        else if (_lastClickPoint.HasValue)
         {
             ApplyRefocus(_lastClickPoint.Value.X, _lastClickPoint.Value.Y);
         }
@@ -238,16 +244,20 @@ public partial class DepthView : BaseAiView
         try
         {
             float strength = (float)SldBlur.Value;
-            byte[]? result;
+            byte[]? result = null;
 
-            // 선택된 모드에 따라 블러 또는 흑백 효과 적용
-            if (CboEffectMode.SelectedIndex == 0)
+            // 선택된 모드에 따라 엔진 메서드 호출
+            switch (CboEffectMode.SelectedIndex)
             {
-                result = await Task.Run(() => _estimator.RenderRefocus(relX, relY, strength));
-            }
-            else
-            {
-                result = await Task.Run(() => _estimator.RenderColorIsolation(relX, relY, strength));
+                case 0: // Blur
+                    result = await Task.Run(() => _estimator.RenderRefocus(relX, relY, strength));
+                    break;
+                case 1: // B&W
+                    result = await Task.Run(() => _estimator.RenderColorIsolation(relX, relY, strength));
+                    break;
+                case 2: // Fog (클릭 좌표 무관)
+                    result = await Task.Run(() => _estimator.RenderFogEffect(strength));
+                    break;
             }
 
             if (result != null && result.Length > 0)
