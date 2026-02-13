@@ -66,8 +66,18 @@
                                 <ComboBoxItem Content="B&amp;W (Isolation)"/>
                                 <ComboBoxItem Content="Fog (Depth)"/>
                                 <ComboBoxItem Content="Sky (Replace)"/>
+                                <ComboBoxItem Content="Relight"/>
                             </ComboBox>
 
+                            <StackPanel x:Name="PnlRelightOptions" Orientation="Horizontal" Visibility="Collapsed" Margin="10,0,0,0">
+                                <TextBlock Text="Color:" VerticalAlignment="Center" Foreground="White" Margin="0,0,5,0"/>
+                                <ComboBox x:Name="CboLightColor" Width="80" SelectedIndex="0" SelectionChanged="CboEffectMode_SelectionChanged">
+                                    <ComboBoxItem Content="White" Tag="255,255,255"/>
+                                    <ComboBoxItem Content="Warm" Tag="180,220,255"/>
+                                    <ComboBoxItem Content="Cool" Tag="255,220,180"/>
+                                    <ComboBoxItem Content="Red" Tag="100,100,255"/>
+                                </ComboBox>
+                            </StackPanel>
                             <Button x:Name="BtnLoadSky" Content="🌅 Load Sky" Visibility="Collapsed" Click="BtnLoadSky_Click" Margin="0,0,10,0"/>
                             <TextBlock x:Name="TxtEffectLabel" Text="Intensity" VerticalAlignment="Center" Foreground="White" Margin="0,0,10,0" FontSize="11"/>
                             <Slider x:Name="SldBlur" Width="150" Minimum="0" Maximum="30" Value="5" VerticalAlignment="Center" ValueChanged="SldBlur_ValueChanged" />

@@ -294,6 +294,54 @@ public class DepthEstimator : BaseOnnxEngine
         return result.ToBytes(".png");
     }
 
+    // 색온도(lightColor)와 거리 감쇄가 포함된 조명
+    public byte[] RenderRelighting(double relX, double relY, float lightIntensity, Vec3b lightColor)
+    {
+        if (_lastInputMat == null || _lastDepthMat == null) return Array.Empty<byte>();
+
+        using var fullDepth = new Mat();
+        Cv2.Resize(_lastDepthMat, fullDepth, _lastInputMat.Size());
+        using var result = new Mat(_lastInputMat.Size(), _lastInputMat.Type());
+
+        float lightX = (float)relX * result.Cols;
+        float lightY = (float)relY * result.Rows;
+        float lightZ = 0.1f * result.Cols; // 광원의 높이 설정
+
+        for (int i = 1; i < result.Rows - 1; i++)
+        {
+            for (int j = 1; j < result.Cols - 1; j++)
+            {
+                // 1. 법선 벡터(Normal) 계산
+                float dx = (fullDepth.At<float>(i, j + 1) - fullDepth.At<float>(i, j - 1)) * 5.0f;
+                float dy = (fullDepth.At<float>(i + 1, j) - fullDepth.At<float>(i - 1, j)) * 5.0f;
+                float mag = (float)Math.Sqrt(dx * dx + dy * dy + 1.0f);
+                float nx = -dx / mag; float ny = -dy / mag; float nz = 1.0f / mag;
+
+                // 2. 광원 방향 및 거리 계산
+                float lx = lightX - j; float ly = lightY - i; float lz = lightZ;
+                float distance = (float)Math.Sqrt(lx * lx + ly * ly + lz * lz);
+                lx /= distance; ly /= distance; lz /= distance;
+
+                // 3. 거리 감쇄(Attenuation): 멀어질수록 빛이 급격히 약해짐
+                // 이 처리가 있어야 빛이 모든 장애물을 뚫고 나가는 느낌이 줄어듭니다.
+                float attenuation = 1.0f / (1.0f + (distance / (result.Cols * 0.3f)));
+
+                // 4. 최종 조명 강도 (각도 * 강도 * 감쇄)
+                float dot = Math.Max(0, nx * lx + ny * ly + nz * lz);
+                float finalBoost = dot * (lightIntensity / 10f) * attenuation;
+
+                var s = _lastInputMat.At<Vec3b>(i, j);
+
+                // 5. 지정한 색상(lightColor) 반영 합성
+                result.Set(i, j, new Vec3b(
+                    (byte)Math.Clamp(s.Item0 + (lightColor.Item0 * finalBoost), 0, 255),
+                    (byte)Math.Clamp(s.Item1 + (lightColor.Item1 * finalBoost), 0, 255),
+                    (byte)Math.Clamp(s.Item2 + (lightColor.Item2 * finalBoost), 0, 255)));
+            }
+        }
+        return result.ToBytes(".png");
+    }
+
     public override void Dispose()
     {
         base.Dispose(); // BaseOnnxEngine 자원 해제

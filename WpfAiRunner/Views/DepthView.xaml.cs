@@ -200,7 +200,7 @@ public partial class DepthView : BaseAiView
         {
             ApplyRefocus(0, 0);
         }
-        // Blur(0)와 B&W(1)는 클릭한 지점 정보가 있어야 업데이트
+        // 그 외 모드는 클릭한 지점 정보가 있어야 업데이트
         else if (_lastClickPoint.HasValue)
         {
             ApplyRefocus(_lastClickPoint.Value.X, _lastClickPoint.Value.Y);
@@ -267,6 +267,20 @@ public partial class DepthView : BaseAiView
                     float threshold = strength / 50f;
                     result = await Task.Run(() => _estimator.RenderSkyReplacement(_skyImageBytes, threshold));
                     break;
+                case 4: // Relight (조명 옵션 통합 반영)
+                    var colorItem = CboLightColor.SelectedItem as ComboBoxItem;
+                    string tagValue = colorItem?.Tag?.ToString() ?? "255,255,255";
+                    var colorTag = tagValue.Split(',');
+                    if (colorTag.Length == 3)
+                    {
+                        var lightColor = new OpenCvSharp.Vec3b(
+                            byte.Parse(colorTag[0]),
+                            byte.Parse(colorTag[1]),
+                            byte.Parse(colorTag[2]));
+
+                        result = await Task.Run(() => _estimator.RenderRelighting(relX, relY, strength, lightColor));
+                    }
+                    break;
             }
 
             if (result != null && result.Length > 0)
@@ -293,29 +307,27 @@ public partial class DepthView : BaseAiView
         if (dialog.ShowDialog() == true)
         {
             _skyImageBytes = System.IO.File.ReadAllBytes(dialog.FileName);
-            UpdateSkyEffect();
+            ApplyRefocus(0, 0); // 즉시 합성 실행
         }
     }
 
     private void CboEffectMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // Sky 모드일 때만 하늘 로드 버튼 표시
+        // 모드별 전용 UI 요소 가시성 제어
         if (BtnLoadSky != null)
             BtnLoadSky.Visibility = CboEffectMode.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
 
-        UpdateSkyEffect();
-    }
+        if (PnlRelightOptions != null)
+            PnlRelightOptions.Visibility = CboEffectMode.SelectedIndex == 4 ? Visibility.Visible : Visibility.Collapsed;
 
-    private async void UpdateSkyEffect()
-    {
-        if (!_hasInferenceResult || _estimator == null || _skyImageBytes == null) return;
-        if (CboEffectMode.SelectedIndex != 3) return;
-
-        // 슬라이더 값을 하늘 인식 임계값(Threshold)으로 사용
-        float threshold = (float)(SldBlur.Value / 100.0);
-        var result = await Task.Run(() => _estimator.RenderSkyReplacement(_skyImageBytes, threshold));
-
-        if (result != null) ImgOutput.Source = BytesToBitmap(result);
+        // 모드 변경 즉시 화면 업데이트
+        if (_hasInferenceResult)
+        {
+            if (CboEffectMode.SelectedIndex == 2 || CboEffectMode.SelectedIndex == 3)
+                ApplyRefocus(0, 0);
+            else if (_lastClickPoint.HasValue)
+                ApplyRefocus(_lastClickPoint.Value.X, _lastClickPoint.Value.Y);
+        }
     }
 
     private void UpdateButtons()
