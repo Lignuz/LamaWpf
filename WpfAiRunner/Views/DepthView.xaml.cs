@@ -235,18 +235,27 @@ public partial class DepthView : BaseAiView
     {
         if (_estimator == null) return;
 
-        // 실시간 업데이트 시 너무 잦은 로그와 Busy상태는 UX를 해치므로 로깅 제외
         try
         {
-            float blurStrength = (float)SldBlur.Value;
-            byte[]? result = await Task.Run(() => _estimator.RenderRefocus(relX, relY, blurStrength));
+            float strength = (float)SldBlur.Value;
+            byte[]? result;
+
+            // 선택된 모드에 따라 블러 또는 흑백 효과 적용
+            if (CboEffectMode.SelectedIndex == 0)
+            {
+                result = await Task.Run(() => _estimator.RenderRefocus(relX, relY, strength));
+            }
+            else
+            {
+                result = await Task.Run(() => _estimator.RenderColorIsolation(relX, relY, strength));
+            }
 
             if (result != null && result.Length > 0)
             {
                 ImgOutput.Source = BytesToBitmap(result);
             }
         }
-        catch (Exception ex) { Log($"Focus error: {ex.Message}"); }
+        catch (Exception ex) { Log($"Effect error: {ex.Message}"); }
     }
 
     // 리포커싱 취소 및 원래 결과(깊이 맵)로 복구
@@ -256,7 +265,17 @@ public partial class DepthView : BaseAiView
         await UpdateResultImage(); // 기존의 스타일 적용된 깊이 맵으로 복구
         Log("Focus reset to original depth map.");
     }
-   
+
+    // 콤보박스 모드 변경 시 즉시 효과 반영
+    private void CboEffectMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // 이미 클릭된 좌표 정보가 있고 추론 결과가 있는 상태라면 즉시 업데이트
+        if (_hasInferenceResult && _lastClickPoint.HasValue)
+        {
+            ApplyRefocus(_lastClickPoint.Value.X, _lastClickPoint.Value.Y);
+        }
+    }
+
     private void UpdateButtons()
     {
         bool busy = ControlPbarLoading?.Visibility == Visibility.Visible;

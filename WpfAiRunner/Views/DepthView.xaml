@@ -61,11 +61,13 @@
 
                     <Border VerticalAlignment="Bottom" Background="#AA000000" CornerRadius="0,0,8,8" Padding="15,8">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <TextBlock Text="Blur Intensity" VerticalAlignment="Center" Foreground="White" Margin="0,0,10,0" FontSize="11"/>
-                            <Slider x:Name="SldBlur" Width="150" Minimum="0" Maximum="30" Value="5" 
-                        VerticalAlignment="Center" ValueChanged="SldBlur_ValueChanged" />
-                            <TextBlock Text="{Binding Value, ElementName=SldBlur, StringFormat={}{0:N0}}" 
-                           Foreground="{StaticResource AccentColor}" VerticalAlignment="Center" Margin="8,0,0,0" Width="20"/>
+                            <ComboBox x:Name="CboEffectMode" Width="100" Margin="0,0,15,0" SelectedIndex="0" SelectionChanged="CboEffectMode_SelectionChanged">
+                                <ComboBoxItem Content="Blur (Focus)"/>
+                                <ComboBoxItem Content="B&amp;W (Isolation)"/>
+                            </ComboBox>
+
+                            <TextBlock x:Name="TxtEffectLabel" Text="Intensity" VerticalAlignment="Center" Foreground="White" Margin="0,0,10,0" FontSize="11"/>
+                            <Slider x:Name="SldBlur" Width="150" Minimum="0" Maximum="30" Value="5" VerticalAlignment="Center" ValueChanged="SldBlur_ValueChanged" />
                         </StackPanel>
                     </Border>
                 </Grid>

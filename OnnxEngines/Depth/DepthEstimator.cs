@@ -159,6 +159,52 @@ public class DepthEstimator : BaseOnnxEngine
         return result.ToBytes(".png");
     }
 
+    // 배경 흑백 효과: 초점 외 영역의 채도를 단계별로 낮춤
+    public byte[] RenderColorIsolation(double relX, double relY, float isolationStrength)
+    {
+        if (_lastInputMat == null || _lastDepthMat == null) return Array.Empty<byte>();
+
+        // 1. 클릭 지점의 깊이값 추출
+        int fx = (int)Math.Clamp(relX * _lastDepthMat.Width, 0, _lastDepthMat.Width - 1);
+        int fy = (int)Math.Clamp(relY * _lastDepthMat.Height, 0, _lastDepthMat.Height - 1);
+        float focusDepth = _lastDepthMat.At<float>(fy, fx);
+
+        using var fullDepth = new Mat();
+        Cv2.Resize(_lastDepthMat, fullDepth, _lastInputMat.Size());
+
+        // 2. 전체 이미지를 흑백으로 변환한 레이어 생성
+        using var grayMat = new Mat();
+        Cv2.CvtColor(_lastInputMat, grayMat, ColorConversionCodes.BGR2GRAY);
+        using var grayBgrMat = new Mat();
+        Cv2.CvtColor(grayMat, grayBgrMat, ColorConversionCodes.GRAY2BGR);
+
+        using var result = new Mat(_lastInputMat.Size(), _lastInputMat.Type());
+
+        // 3. 슬라이더 강도에 따른 감도 설정
+        float sensitivity = 0.3f + (isolationStrength / 30f) * 0.7f;
+
+        for (int i = 0; i < result.Rows; i++)
+        {
+            for (int j = 0; j < result.Cols; j++)
+            {
+                float diff = Math.Abs(fullDepth.At<float>(i, j) - focusDepth);
+                // 깊이 차이가 클수록 가중치가 커짐 (흑백 비중 증가)
+                float weight = Math.Min(diff * sensitivity, 1.0f);
+                weight = weight * weight; // 전이를 더 부드럽게 처리
+
+                var colorPix = _lastInputMat.At<Vec3b>(i, j);
+                var grayPix = grayBgrMat.At<Vec3b>(i, j);
+
+                // 컬러와 흑백을 가중치에 따라 합성
+                result.Set(i, j, new Vec3b(
+                    (byte)(colorPix.Item0 * (1 - weight) + grayPix.Item0 * weight),
+                    (byte)(colorPix.Item1 * (1 - weight) + grayPix.Item1 * weight),
+                    (byte)(colorPix.Item2 * (1 - weight) + grayPix.Item2 * weight)));
+            }
+        }
+        return result.ToBytes(".png");
+    }
+
     public override void Dispose()
     {
         base.Dispose(); // BaseOnnxEngine 자원 해제
