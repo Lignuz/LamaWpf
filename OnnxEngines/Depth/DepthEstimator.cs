@@ -250,6 +250,50 @@ public class DepthEstimator : BaseOnnxEngine
         return result.ToBytes(".png");
     }
 
+    // 하늘 교체: 가장 먼 영역(하늘)을 찾아 새 이미지로 합성
+    public byte[] RenderSkyReplacement(byte[] skyImageBytes, float threshold = 0.15f)
+    {
+        if (_lastInputMat == null || _lastDepthMat == null) return Array.Empty<byte>();
+
+        using var skyMat = Cv2.ImDecode(skyImageBytes, ImreadModes.Color);
+        using var resizedSky = new Mat();
+        Cv2.Resize(skyMat, resizedSky, _lastInputMat.Size());
+
+        using var fullDepth = new Mat();
+        Cv2.Resize(_lastDepthMat, fullDepth, _lastInputMat.Size());
+
+        fullDepth.MinMaxLoc(out double minVal, out double maxVal);
+        float range = (float)(maxVal - minVal);
+
+        using var result = new Mat(_lastInputMat.Size(), _lastInputMat.Type());
+
+        // 경계를 부드럽게 만들 범위(Softness) 설정
+        float softness = 0.05f;
+
+        for (int i = 0; i < result.Rows; i++)
+        {
+            for (int j = 0; j < result.Cols; j++)
+            {
+                float rawDepth = fullDepth.At<float>(i, j);
+                float normalizedDepth = (rawDepth - (float)minVal) / (range < 0.001f ? 1.0f : range);
+
+                // 0 또는 1이 아닌, 경계면에서 0~1 사이의 부드러운 가중치 계산
+                // SmoothStep과 유사한 방식으로 경계를 흐립니다.
+                float weight = Math.Clamp((threshold - normalizedDepth) / softness, 0.0f, 1.0f);
+
+                var s = _lastInputMat.At<Vec3b>(i, j);
+                var sky = resizedSky.At<Vec3b>(i, j);
+
+                // 가중치에 따른 알파 블렌딩 합성
+                result.Set(i, j, new Vec3b(
+                    (byte)(s.Item0 * (1.0f - weight) + sky.Item0 * weight),
+                    (byte)(s.Item1 * (1.0f - weight) + sky.Item1 * weight),
+                    (byte)(s.Item2 * (1.0f - weight) + sky.Item2 * weight)));
+            }
+        }
+        return result.ToBytes(".png");
+    }
+
     public override void Dispose()
     {
         base.Dispose(); // BaseOnnxEngine 자원 해제

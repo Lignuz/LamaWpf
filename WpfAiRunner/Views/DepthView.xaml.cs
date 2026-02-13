@@ -187,17 +187,20 @@ public partial class DepthView : BaseAiView
         Canvas.SetLeft(FocusMarker, p.X - (FocusMarker.Width / 2));
         Canvas.SetTop(FocusMarker, p.Y - (FocusMarker.Height / 2));
     }
-
-    // 슬라이더 변경 시 실시간 업데이트
-    // 안개 모드일 때는 클릭하지 않아도 슬라이더만으로 업데이트 가능
+    
+    // 슬라이더 변경 시 호출되는 공통 핸들러
     private void SldBlur_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (!_hasInferenceResult) return;
 
-        if (CboEffectMode.SelectedIndex == 2) // Fog 모드인 경우
+        int mode = CboEffectMode.SelectedIndex;
+
+        // Fog(2)와 Sky(3)는 클릭 좌표가 없어도 슬라이더만으로 실시간 업데이트 가능
+        if (mode == 2 || mode == 3)
         {
-            ApplyRefocus(0, 0); // 좌표 상관없음
+            ApplyRefocus(0, 0);
         }
+        // Blur(0)와 B&W(1)는 클릭한 지점 정보가 있어야 업데이트
         else if (_lastClickPoint.HasValue)
         {
             ApplyRefocus(_lastClickPoint.Value.X, _lastClickPoint.Value.Y);
@@ -239,7 +242,7 @@ public partial class DepthView : BaseAiView
 
     private async void ApplyRefocus(double relX, double relY)
     {
-        if (_estimator == null) return;
+        if (_estimator == null || !_hasInferenceResult) return;
 
         try
         {
@@ -249,14 +252,20 @@ public partial class DepthView : BaseAiView
             // 선택된 모드에 따라 엔진 메서드 호출
             switch (CboEffectMode.SelectedIndex)
             {
-                case 0: // Blur
+                case 0: // Blur (Focus)
                     result = await Task.Run(() => _estimator.RenderRefocus(relX, relY, strength));
                     break;
-                case 1: // B&W
+                case 1: // B&W (Isolation)
                     result = await Task.Run(() => _estimator.RenderColorIsolation(relX, relY, strength));
                     break;
-                case 2: // Fog (클릭 좌표 무관)
+                case 2: // Fog (Depth)
                     result = await Task.Run(() => _estimator.RenderFogEffect(strength));
+                    break;
+                case 3: // Sky (Replace)
+                    if (_skyImageBytes == null) return;
+                    // 슬라이더 0~30 범위를 하늘 인식 임계값(0.0~0.6)으로 변환
+                    float threshold = strength / 50f;
+                    result = await Task.Run(() => _estimator.RenderSkyReplacement(_skyImageBytes, threshold));
                     break;
             }
 
@@ -276,14 +285,37 @@ public partial class DepthView : BaseAiView
         Log("Focus reset to original depth map.");
     }
 
-    // 콤보박스 모드 변경 시 즉시 효과 반영
+    private byte[]? _skyImageBytes = null;
+
+    private void BtnLoadSky_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "Images|*.jpg;*.png;*.jpeg" };
+        if (dialog.ShowDialog() == true)
+        {
+            _skyImageBytes = System.IO.File.ReadAllBytes(dialog.FileName);
+            UpdateSkyEffect();
+        }
+    }
+
     private void CboEffectMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // 이미 클릭된 좌표 정보가 있고 추론 결과가 있는 상태라면 즉시 업데이트
-        if (_hasInferenceResult && _lastClickPoint.HasValue)
-        {
-            ApplyRefocus(_lastClickPoint.Value.X, _lastClickPoint.Value.Y);
-        }
+        // Sky 모드일 때만 하늘 로드 버튼 표시
+        if (BtnLoadSky != null)
+            BtnLoadSky.Visibility = CboEffectMode.SelectedIndex == 3 ? Visibility.Visible : Visibility.Collapsed;
+
+        UpdateSkyEffect();
+    }
+
+    private async void UpdateSkyEffect()
+    {
+        if (!_hasInferenceResult || _estimator == null || _skyImageBytes == null) return;
+        if (CboEffectMode.SelectedIndex != 3) return;
+
+        // 슬라이더 값을 하늘 인식 임계값(Threshold)으로 사용
+        float threshold = (float)(SldBlur.Value / 100.0);
+        var result = await Task.Run(() => _estimator.RenderSkyReplacement(_skyImageBytes, threshold));
+
+        if (result != null) ImgOutput.Source = BytesToBitmap(result);
     }
 
     private void UpdateButtons()

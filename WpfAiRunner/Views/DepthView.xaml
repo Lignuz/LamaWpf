@@ -65,8 +65,10 @@
                                 <ComboBoxItem Content="Blur (Focus)"/>
                                 <ComboBoxItem Content="B&amp;W (Isolation)"/>
                                 <ComboBoxItem Content="Fog (Depth)"/>
+                                <ComboBoxItem Content="Sky (Replace)"/>
                             </ComboBox>
 
+                            <Button x:Name="BtnLoadSky" Content="🌅 Load Sky" Visibility="Collapsed" Click="BtnLoadSky_Click" Margin="0,0,10,0"/>
                             <TextBlock x:Name="TxtEffectLabel" Text="Intensity" VerticalAlignment="Center" Foreground="White" Margin="0,0,10,0" FontSize="11"/>
                             <Slider x:Name="SldBlur" Width="150" Minimum="0" Maximum="30" Value="5" VerticalAlignment="Center" ValueChanged="SldBlur_ValueChanged" />
                         </StackPanel>
